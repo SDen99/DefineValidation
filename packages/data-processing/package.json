@@ -1,0 +1,38 @@
+{
+"name": "@sden99/data-processing",
+"version": "1.0.0",
+"type": "module",
+"main": "./dist/index.js",
+"types": "./dist/index.d.ts",
+"exports": {
+  ".": {
+    "types": "./dist/index.d.ts",
+    "import": "./dist/index.js"
+  },
+  "./types": {
+    "types": "./dist/types/index.d.ts",
+    "import": "./dist/types/index.js"
+  },
+  "./definexml": {
+    "types": "./dist/definexml/index.d.ts",
+    "import": "./dist/definexml/index.js"
+  },
+  "./sas7bdat": {
+    "types": "./dist/sas7bdat/index.d.ts",
+    "import": "./dist/sas7bdat/index.js"
+  }
+},
+"files": [
+  "dist"
+],
+"dependencies": {
+  "@sden99/cdisc-types": "workspace:*"
+},
+"scripts": {
+  "build": "tsc",
+  "check": "tsc --noEmit"
+},
+"devDependencies": {
+  "typescript": "^5.8.3"
+}
+}

@@ -1,0 +1,10 @@
+// packages/app/tsconfig.json
+{
+	"extends": "./.svelte-kit/tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+	  "allowImportingTsExtensions": true,
+	  "skipLibCheck": true,
+		"moduleResolution": "bundler"
+	 }
+  }

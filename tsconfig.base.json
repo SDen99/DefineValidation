@@ -1,0 +1,22 @@
+// [ROOT]/tsconfig.base.json
+{
+  "compilerOptions": {
+    "baseUrl": ".", // All paths are relative to the monorepo root
+    "paths": {
+      "@sden99/cdisc-types": ["packages/cdisc-types/src"],
+      "@sden99/cdisc-types/*": ["packages/cdisc-types/src/*"],
+      "@sden99/data-processing": ["packages/data-processing/src"],
+      "@sden99/data-processing/*": ["packages/data-processing/src/*"]
+    },
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "sourceMap": true
+  },
+  "exclude": ["node_modules"]
+}

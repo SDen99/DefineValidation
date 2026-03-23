@@ -1,0 +1,73 @@
+## Sample CDISC Validation Rules
+## Upload this file on the /rules page to test YAML rule import
+
+# Rule 1: Fully executable — checks SEX is in codelist
+- Core:
+    Id: "CUSTOM.CODELIST.DM.SEX"
+    Version: "1"
+    Status: "Published"
+  Description: "SEX must be one of M, F, or U"
+  Sensitivity: "Record"
+  Executability: "Fully Executable"
+  Rule Type: "Codelist Check"
+  Target Variable: "SEX"
+  Scope:
+    Domains:
+      Include:
+        - "DM"
+  Check:
+    name: "SEX"
+    operator: "is_not_contained_by"
+    value:
+      - "M"
+      - "F"
+      - "U"
+  Outcome:
+    Message: "SEX value is not in the allowed codelist (M, F, U)"
+    Output Variables:
+      - "SEX"
+
+# Rule 2: Fully executable — checks AGE is not empty
+- Core:
+    Id: "CUSTOM.REQUIRED.DM.AGE"
+    Version: "1"
+    Status: "Draft"
+  Description: "AGE must not be empty in DM domain"
+  Sensitivity: "Record"
+  Executability: "Fully Executable"
+  Rule Type: "Required Variable"
+  Target Variable: "AGE"
+  Scope:
+    Domains:
+      Include:
+        - "DM"
+  Check:
+    name: "AGE"
+    operator: "empty"
+  Outcome:
+    Message: "AGE is required but has empty values"
+    Output Variables:
+      - "AGE"
+
+# Rule 3: Uses an unsupported operator — should import with warning
+- Core:
+    Id: "CUSTOM.DATE.DM.BRTHDTC"
+    Version: "1"
+    Status: "Draft"
+  Description: "BRTHDTC must be a valid ISO 8601 date"
+  Sensitivity: "Record"
+  Executability: "Fully Executable"
+  Rule Type: "Format Check"
+  Target Variable: "BRTHDTC"
+  Scope:
+    Domains:
+      Include:
+        - "DM"
+  Check:
+    name: "BRTHDTC"
+    operator: "is_valid_iso8601_date"
+    value: true
+  Outcome:
+    Message: "BRTHDTC is not a valid ISO 8601 date"
+    Output Variables:
+      - "BRTHDTC"

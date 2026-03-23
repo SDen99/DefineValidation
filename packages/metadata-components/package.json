@@ -1,0 +1,74 @@
+{
+  "name": "@sden99/metadata-components",
+  "version": "0.1.0",
+  "description": "Variable-Level Metadata components and state management for clinical data applications",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "svelte": "./dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "svelte-package",
+    "dev": "svelte-package -w",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "package": "svelte-package"
+  },
+  "exports": {
+    ".": {
+      "svelte": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./state": {
+      "import": "./dist/state/index.js",
+      "types": "./dist/state/index.d.ts"
+    },
+    "./utils": {
+      "import": "./dist/utils/index.js",
+      "types": "./dist/utils/index.d.ts"
+    },
+    "./types": {
+      "import": "./dist/types/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./components/*.svelte": {
+      "svelte": "./src/components/*.svelte",
+      "types": "./src/components/*.svelte"
+    }
+  },
+  "dependencies": {
+    "@sden99/ui-components": "workspace:*",
+    "@sden99/data-processing": "workspace:*"
+  },
+  "peerDependencies": {
+    "@lucide/svelte": "^0.526.0",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/package": "^2.3.0",
+    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.8.3",
+    "vite": "^5.0.0"
+  },
+  "keywords": [
+    "metadata",
+    "clinical-data",
+    "svelte-components",
+    "vlm",
+    "variable-level-metadata",
+    "cdisc",
+    "ui-components"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SDen99/DatasetViewer.git",
+    "directory": "packages/metadata-components"
+  },
+  "author": "Densham",
+  "license": "ISC"
+}

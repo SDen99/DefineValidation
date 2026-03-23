@@ -1,0 +1,353 @@
+/**
+ * @sden99/theme - Centralized Theme and Design Tokens
+ *
+ * This file contains all design tokens for the Clinical Dataset Viewer application.
+ * Supports: Light/Dark mode, Accent colors, High contrast, Font sizing, Reduced motion
+ */
+
+@import 'tailwindcss';
+
+/* Scan workspace packages for Tailwind classes */
+@source '../../**/src/**/*.{svelte,ts,js,html}';
+
+@theme {
+	/* ========================================
+	   CUSTOM FONT SIZES - text-xxs and text-2xs utilities
+	   ======================================== */
+
+	--font-size-xxs: 0.625rem;
+	--font-size-2xs: 0.6875rem;
+
+	--text-xxs: 0.625rem;
+	--text-2xs: 0.6875rem;
+
+	/* ========================================
+	   BASE COLORS - Light Mode
+	   ======================================== */
+
+	/* Background & Foreground */
+	--color-background: hsl(0 0% 100%);
+	--color-foreground: hsl(224 71.4% 4.1%);
+
+	/* Muted (subtle backgrounds and text) */
+	--color-muted: hsl(220 14.3% 95.9%);
+	--color-muted-foreground: hsl(220 8.9% 46.1%);
+
+	/* Popover (dropdowns, tooltips) */
+	--color-popover: hsl(0 0% 100%);
+	--color-popover-foreground: hsl(224 71.4% 4.1%);
+
+	/* Card (surface for cards and panels) */
+	--color-card: hsl(0 0% 100%);
+	--color-card-foreground: hsl(224 71.4% 4.1%);
+
+	/* Borders & Inputs */
+	--color-border: hsl(220 13% 91%);
+	--color-input: hsl(220 13% 91%);
+
+	/* Primary (main action color) */
+	--color-primary: hsl(220.9 39.3% 11%);
+	--color-primary-foreground: hsl(210 20% 98%);
+
+	/* Secondary (alternative actions) */
+	--color-secondary: hsl(220 14.3% 95.9%);
+	--color-secondary-foreground: hsl(220.9 39.3% 11%);
+
+	/* Accent (highlights and hover states) */
+	--color-accent: hsl(220 14.3% 95.9%);
+	--color-accent-foreground: hsl(220.9 39.3% 11%);
+
+	/* Destructive (errors and destructive actions) */
+	--color-destructive: hsl(0 72.2% 50.6%);
+	--color-destructive-foreground: hsl(210 20% 98%);
+
+	/* Ring (focus rings) */
+	--color-ring: hsl(224 71.4% 4.1%);
+
+	/* ========================================
+	   SEMANTIC STATE COLORS
+	   ======================================== */
+
+	/* Success (positive outcomes) */
+	--color-success: hsl(142.1 70.6% 45.3%);
+	--color-success-foreground: hsl(0 0% 100%);
+
+	/* Warning (cautionary messages) */
+	--color-warning: hsl(24.6 95% 53.1%);
+	--color-warning-foreground: hsl(0 0% 100%);
+
+	/* Info (informational messages) */
+	--color-info: hsl(217.2 91.2% 59.8%);
+	--color-info-foreground: hsl(0 0% 100%);
+
+	/* Overlay (modal backdrops) */
+	--color-overlay: hsl(0 0% 0% / 0.5);
+
+	/* ========================================
+	   SIDEBAR COLORS
+	   ======================================== */
+
+	--sidebar-background: 0 0% 98%;
+	--sidebar-foreground: 240 5.3% 26.1%;
+	--sidebar-primary: 240 5.9% 10%;
+	--sidebar-primary-foreground: 0 0% 98%;
+	--sidebar-accent: 240 4.8% 95.9%;
+	--sidebar-accent-foreground: 240 5.9% 10%;
+	--sidebar-border: 220 13% 91%;
+	--sidebar-ring: 217.2 91.2% 59.8%;
+
+	/* ========================================
+	   DESIGN TOKENS
+	   ======================================== */
+
+	--radius: 0.5rem;
+}
+
+/* ========================================
+   DARK MODE
+   ======================================== */
+
+.dark {
+	/* Background & Foreground */
+	--color-background: hsl(224 71.4% 4.1%);
+	--color-foreground: hsl(210 20% 98%);
+
+	/* Muted */
+	--color-muted: hsl(215 27.9% 16.9%);
+	--color-muted-foreground: hsl(217.9 10.6% 64.9%);
+
+	/* Popover */
+	--color-popover: hsl(224 71.4% 4.1%);
+	--color-popover-foreground: hsl(210 20% 98%);
+
+	/* Card */
+	--color-card: hsl(224 71.4% 4.1%);
+	--color-card-foreground: hsl(210 20% 98%);
+
+	/* Borders & Inputs */
+	--color-border: hsl(215 27.9% 16.9%);
+	--color-input: hsl(215 27.9% 16.9%);
+
+	/* Primary */
+	--color-primary: hsl(210 20% 98%);
+	--color-primary-foreground: hsl(220.9 39.3% 11%);
+
+	/* Secondary */
+	--color-secondary: hsl(215 27.9% 16.9%);
+	--color-secondary-foreground: hsl(210 20% 98%);
+
+	/* Accent */
+	--color-accent: hsl(215 27.9% 16.9%);
+	--color-accent-foreground: hsl(210 20% 98%);
+
+	/* Destructive */
+	--color-destructive: hsl(0 62.8% 30.6%);
+	--color-destructive-foreground: hsl(210 20% 98%);
+
+	/* Ring */
+	--color-ring: hsl(216 12.2% 83.9%);
+
+	/* Semantic State Colors (Dark Mode) */
+	--color-success: hsl(142.1 70.6% 45.3%);
+	--color-success-foreground: hsl(0 0% 100%);
+
+	--color-warning: hsl(24.6 95% 53.1%);
+	--color-warning-foreground: hsl(0 0% 100%);
+
+	--color-info: hsl(217.2 91.2% 59.8%);
+	--color-info-foreground: hsl(0 0% 100%);
+
+	/* Overlay (Dark Mode) */
+	--color-overlay: hsl(0 0% 0% / 0.7);
+
+	/* Sidebar (Dark Mode) */
+	--sidebar-background: 240 5.9% 10%;
+	--sidebar-foreground: 240 4.8% 95.9%;
+	--sidebar-primary: 224.3 76.3% 48%;
+	--sidebar-primary-foreground: 0 0% 100%;
+	--sidebar-accent: 240 3.7% 15.9%;
+	--sidebar-accent-foreground: 240 4.8% 95.9%;
+	--sidebar-border: 240 3.7% 15.9%;
+	--sidebar-ring: 217.2 91.2% 59.8%;
+}
+
+/* ========================================
+   GLOBAL STYLES
+   ======================================== */
+
+* {
+	@apply border-border;
+}
+
+body {
+	@apply bg-background text-foreground;
+}
+
+/* ========================================
+   FONT SIZE SYSTEM
+   ======================================== */
+
+:root {
+	--font-size-small: 0.875;
+	--font-size-medium: 1;
+	--font-size-large: 1.125;
+}
+
+/* Base font sizing - 67% density scale (10.72px = 16px * 0.67) */
+html {
+	font-size: calc(var(--font-size-medium) * 10.72px);
+}
+
+/* Font size classes */
+html.font-small {
+	font-size: calc(var(--font-size-small) * 10.72px);
+}
+
+html.font-large {
+	font-size: calc(var(--font-size-large) * 10.72px);
+}
+
+/* Responsive: Mobile with 67% density scale (9.38px = 14px * 0.67) */
+@media (max-width: 640px) {
+	html {
+		font-size: calc(var(--font-size-medium) * 9.38px);
+	}
+}
+
+/* ========================================
+   ACCENT COLOR VARIANTS
+   ======================================== */
+
+html.accent-blue {
+	--color-primary: hsl(217.2 91.2% 59.8%);
+	--color-primary-foreground: hsl(0 0% 100%);
+	--color-ring: hsl(217.2 91.2% 59.8%);
+}
+
+html.accent-purple {
+	--color-primary: hsl(271.5 91.7% 65.1%);
+	--color-primary-foreground: hsl(0 0% 100%);
+	--color-ring: hsl(271.5 91.7% 65.1%);
+}
+
+html.accent-green {
+	--color-primary: hsl(142.1 70.6% 45.3%);
+	--color-primary-foreground: hsl(0 0% 100%);
+	--color-ring: hsl(142.1 70.6% 45.3%);
+}
+
+html.accent-red {
+	--color-primary: hsl(0 72.2% 50.6%);
+	--color-primary-foreground: hsl(0 0% 100%);
+	--color-ring: hsl(0 72.2% 50.6%);
+}
+
+html.accent-orange {
+	--color-primary: hsl(24.6 95% 53.1%);
+	--color-primary-foreground: hsl(0 0% 100%);
+	--color-ring: hsl(24.6 95% 53.1%);
+}
+
+/* ========================================
+   HIGH CONTRAST MODE
+   ======================================== */
+
+html.high-contrast {
+	--color-foreground: hsl(0 0% 0%);
+	--color-background: hsl(0 0% 100%);
+	--color-muted: hsl(0 0% 88%);
+	--color-muted-foreground: hsl(0 0% 20%);
+	--color-popover: hsl(0 0% 100%);
+	--color-popover-foreground: hsl(0 0% 0%);
+	--color-card: hsl(0 0% 100%);
+	--color-card-foreground: hsl(0 0% 0%);
+	--color-border: hsl(0 0% 40%);
+	--color-input: hsl(0 0% 80%);
+}
+
+html.dark.high-contrast {
+	--color-background: hsl(0 0% 0%);
+	--color-foreground: hsl(0 0% 100%);
+	--color-muted: hsl(0 0% 20%);
+	--color-muted-foreground: hsl(0 0% 90%);
+	--color-popover: hsl(0 0% 0%);
+	--color-popover-foreground: hsl(0 0% 100%);
+	--color-card: hsl(0 0% 0%);
+	--color-card-foreground: hsl(0 0% 100%);
+	--color-border: hsl(0 0% 70%);
+	--color-input: hsl(0 0% 30%);
+}
+
+/* ========================================
+   ACCESSIBILITY: REDUCED MOTION
+   ======================================== */
+
+html.reduced-motion * {
+	animation-duration: 0.001ms !important;
+	transition-duration: 0.001ms !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		transition: none;
+	}
+}
+
+html.reduced-motion :root {
+	transition: none;
+}
+
+/* ========================================
+   TRANSITIONS
+   ======================================== */
+
+:root {
+	transition:
+		background-color 0.3s ease,
+		color 0.3s ease,
+		opacity 0.2s ease,
+		transform 0.2s ease;
+}
+
+/* Radix UI specific transitions */
+[data-radix-popper-content-wrapper],
+[data-state='open'],
+[data-state='closed'] {
+	transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+	::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+
+	::-webkit-scrollbar-track {
+		background: var(--color-background);
+	}
+
+	::-webkit-scrollbar-thumb {
+		background: var(--color-muted);
+		border-radius: 5px;
+	}
+
+	::-webkit-scrollbar-thumb:hover {
+		background: var(--color-muted-foreground);
+	}
+}
+
+.dark ::-webkit-scrollbar-track {
+	background: var(--color-background);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+	background: var(--color-muted);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+	background: var(--color-muted-foreground);
+}

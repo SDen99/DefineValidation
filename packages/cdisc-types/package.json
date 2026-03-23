@@ -1,0 +1,43 @@
+{
+  "name": "@sden99/cdisc-types",
+  "version": "1.0.0",
+  "description": "Core TypeScript definitions for CDISC standards and application data.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./define-xml": {
+      "types": "./dist/define-xml/index.d.ts",
+      "import": "./dist/define-xml/index.js"
+    },
+    "./VLMtypes": {
+      "types": "./dist/VLMtypes/index.d.ts",
+      "import": "./dist/VLMtypes/index.js"
+    },
+    "./datasets": {
+      "types": "./dist/datasets/index.d.ts",
+      "import": "./dist/datasets/index.js"
+    },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "import": "./dist/ui/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "import": "./dist/shared/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "files": [
+    "dist"
+  ]
+}

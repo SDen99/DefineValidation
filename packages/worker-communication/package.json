@@ -1,0 +1,32 @@
+{
+	"name": "@sden99/worker-communication",
+	"version": "0.1.0",
+	"description": "Worker pool management and communication utilities",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist",
+		"src"
+	],
+	"scripts": {
+		"build": "tsc",
+		"dev": "tsc --watch",
+		"check": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@sden99/data-processing": "workspace:*"
+	},
+	"devDependencies": {
+		"typescript": "^5.0.0"
+	},
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./data.worker": {
+			"import": "./src/data.worker.ts"
+		}
+	}
+}

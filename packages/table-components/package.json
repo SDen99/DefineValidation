@@ -1,0 +1,52 @@
+{
+  "name": "@sden99/table-components",
+  "version": "0.1.0",
+  "description": "Shared table components for clinical data visualization",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "svelte": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./ResizeHandle.svelte": {
+      "svelte": "./dist/ResizeHandle.svelte",
+      "import": "./dist/ResizeHandle.svelte",
+      "types": "./dist/ResizeHandle.svelte.d.ts"
+    },
+    "./DragHandle.svelte": {
+      "svelte": "./dist/DragHandle.svelte",
+      "import": "./dist/DragHandle.svelte",
+      "types": "./dist/DragHandle.svelte.d.ts"
+    },
+    "./BaseTableHeader.svelte": {
+      "svelte": "./dist/BaseTableHeader.svelte",
+      "import": "./dist/BaseTableHeader.svelte",
+      "types": "./dist/BaseTableHeader.svelte.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "svelte-package",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "svelte-check --tsconfig ./tsconfig.json --watch"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-auto": "^3.0.0",
+    "@sveltejs/kit": "^2.0.0",
+    "@sveltejs/package": "^2.0.0",
+    "@sden99/ui-components": "workspace:*",
+    "@lucide/svelte": "^0.542.0",
+    "svelte": "^5.0.0",
+    "svelte-check": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.0.0",
+    "@sden99/ui-components": "workspace:*"
+  },
+  "files": [
+    "dist"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "define-validation",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter app dev",
+    "build": "pnpm run build:deps && pnpm --filter app build",
+    "build:deps": "rm -f packages/*/tsconfig.tsbuildinfo && pnpm --filter @sden99/cdisc-types build && pnpm --filter @sden99/data-processing build && pnpm -r --filter '!app' --filter '!@sden99/cdisc-types' --filter '!@sden99/data-processing' build",
+    "preview": "pnpm --filter app preview",
+    "check": "pnpm --filter app check",
+    "lint": "pnpm --filter app lint",
+    "format": "pnpm --filter app format",
+    "test": "pnpm --recursive test",
+    "deploy": "cd packages/app && pnpm run build"
+  },
+  "devDependencies": {
+    "@lucide/svelte": "^0.526.0",
+    "@tailwindcss/postcss": "^4.1.11",
+    "autoprefixer": "^10.4.21",
+    "dependency-cruiser": "^16.10.4",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3"
+  }
+}

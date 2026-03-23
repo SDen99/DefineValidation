@@ -1,0 +1,66 @@
+{
+  "name": "@sden99/dataset-domain",
+  "version": "0.1.0",
+  "description": "Dataset domain logic and business rules for clinical data management",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "coverage": "vitest run --coverage",
+    "lint": "prettier --check . && eslint .",
+    "format": "prettier --write \"src/**/*.{js,ts,json,md}\""
+  },
+  "dependencies": {
+    "@sden99/cdisc-types": "workspace:*",
+    "@sden99/data-processing": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.1.0",
+    "eslint": "^9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.0.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./repository": {
+      "types": "./dist/repository/index.d.ts",
+      "import": "./dist/repository/index.js"
+    },
+    "./services": {
+      "types": "./dist/services/index.d.ts", 
+      "import": "./dist/services/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SDen99/DatasetViewer.git",
+    "directory": "packages/dataset-domain"
+  },
+  "keywords": [
+    "clinical-data",
+    "cdisc",
+    "dataset",
+    "domain-driven-design"
+  ],
+  "author": "Densham",
+  "license": "ISC"
+}

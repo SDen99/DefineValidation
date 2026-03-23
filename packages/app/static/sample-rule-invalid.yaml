@@ -1,0 +1,29 @@
+## This file has two rules: one valid, one missing required fields (should be skipped)
+
+# Rule 1: Valid
+- Core:
+    Id: "CUSTOM.LENGTH.VS.VSTESTCD"
+    Version: "1"
+    Status: "Draft"
+  Description: "VSTESTCD must not exceed 8 characters"
+  Sensitivity: "Record"
+  Rule Type: "Length Check"
+  Target Variable: "VSTESTCD"
+  Scope:
+    Domains:
+      Include:
+        - "VS"
+  Check:
+    name: "VSTESTCD"
+    operator: "longer_than"
+    value: 8
+  Outcome:
+    Message: "VSTESTCD exceeds maximum length of 8"
+    Output Variables:
+      - "VSTESTCD"
+
+# Rule 2: Invalid — missing Check and Outcome.Message
+- Core:
+    Id: "BROKEN.RULE.001"
+  Description: "This rule is incomplete and should be skipped"
+  Sensitivity: "Record"

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en" %sveltekit.theme%>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		%sveltekit.head%
+
+		<!-- Simple theme prevention script -->
+		<script>
+			(function () {
+				try {
+					const stored = localStorage.getItem('sas-viewer-state');
+					if (stored) {
+						const parsed = JSON.parse(stored);
+						if (parsed.themePreferences) {
+							const theme = parsed.themePreferences;
+
+							// Just apply dark mode to prevent flash - the store will handle the rest
+							let appliedTheme = theme.mode;
+							if (theme.followSystem || theme.mode === 'system') {
+								const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+								appliedTheme = systemDark ? 'dark' : 'light';
+							}
+
+							if (appliedTheme === 'dark') {
+								document.documentElement.classList.add('dark');
+							}
+						}
+					}
+				} catch (e) {
+					// Silently fail - the store will handle theme application
+				}
+			})();
+		</script>
+	</head>
+	<body data-sveltekit-preload-data="hover" data-theme="default">
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

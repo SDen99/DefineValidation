@@ -1,0 +1,8 @@
+/* Import centralized theme */
+@import '../../theme/src/theme.css';
+
+html,
+body {
+	height: 100%;
+	overflow: hidden; /* Prevent scrolling on the body itself */
+}

@@ -1,0 +1,484 @@
+# Filter Tree — Grouped Expressions with Bracket Support
+#
+# Replaces the flat Map<string, Filter> model with a recursive tree
+# supporting nested AND/OR groups, drag-to-group, inline editing,
+# and visual bracket rendering in the FilterBar.
+#
+# Current state: flat Map<string, Filter> + global AND/OR toggle
+# Target state:  FilterNode tree with nested groups + per-group AND/OR
+#
+# Blast radius: ~23 files, all within data-table-v3 (no app package changes)
+# The package's external API (initialFilters prop, onFilterChange callback)
+# uses serialized format, so tree changes are contained.
+#
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 1: DATA MODEL & ENGINE (Foundation — must be done first)
+# ═══════════════════════════════════════════════════════════════════
+#
+# This phase changes the core data representation. Everything else
+# depends on it. Aim to keep the existing flat UI working during
+# this phase by providing a compatibility shim that flattens the
+# tree for components not yet updated.
+
+## Phase 1A: Type definitions
+  File: src/lib/types/filters.ts
+
+  - [ ] Define FilterLeaf type (wraps a single Filter + unique nodeId)
+        ```
+        interface FilterLeaf {
+          nodeType: 'leaf';
+          nodeId: string;          // crypto.randomUUID() or nanoid
+          filter: Filter;          // existing Filter union (text/numeric/date/set/boolean)
+        }
+        ```
+
+  - [ ] Define FilterGroup type (recursive container)
+        ```
+        interface FilterGroup {
+          nodeType: 'group';
+          nodeId: string;
+          combination: FilterCombination;  // 'AND' | 'OR'
+          children: FilterNode[];
+        }
+        ```
+
+  - [ ] Define FilterNode union: FilterLeaf | FilterGroup
+
+  - [ ] Define FilterTree type (root is always a FilterGroup)
+        ```
+        interface FilterTree {
+          root: FilterGroup;
+        }
+        ```
+
+  - [ ] Add helper type: FlatFilterEntry = { nodeId: string; filter: Filter; path: string[] }
+        (path = array of parent group nodeIds, for breadcrumb/nesting depth)
+
+  - [ ] Export all new types from types/filters.ts
+
+  - [ ] Decision: keep FilterCombination as 'AND' | 'OR' (no XOR/NAND — not needed for clinical data)
+
+## Phase 1B: Tree utility functions
+  New file: src/lib/utils/filterTree.ts
+
+  - [ ] createFilterTree(): FilterTree — empty root AND group
+  - [ ] createLeaf(filter): FilterLeaf — wraps filter with generated nodeId
+  - [ ] createGroup(combination, children?): FilterGroup
+  - [ ] addFilter(tree, filter, parentGroupId?): FilterTree — adds leaf to group (default: root)
+  - [ ] removeNode(tree, nodeId): FilterTree — removes leaf or group by nodeId
+  - [ ] updateFilter(tree, nodeId, filter): FilterTree — updates leaf's filter
+  - [ ] moveNode(tree, nodeId, targetGroupId, insertIndex): FilterTree — moves node between groups
+  - [ ] groupNodes(tree, nodeIds, combination): FilterTree — wraps selected nodes in a new group
+  - [ ] ungroupNode(tree, groupId): FilterTree — dissolves group, moves children to parent
+  - [ ] findNode(tree, nodeId): FilterNode | null
+  - [ ] findParentGroup(tree, nodeId): FilterGroup | null
+  - [ ] getLeafFilters(tree): Filter[] — flattens tree to array (compatibility shim)
+  - [ ] getLeafCount(tree): number — count of leaf filters
+  - [ ] getFilterByColumnId(tree, columnId): FilterLeaf | null — find first filter for column
+  - [ ] setFilterForColumn(tree, columnId, filter | null): FilterTree — add/update/remove by columnId
+        (backwards-compatible with current handleFilterChange signature)
+  - [ ] mapLeaves(tree, fn): FilterTree — transform every leaf filter
+  - [ ] filterTreeToMap(tree): Map<string, Filter> — compatibility: extract columnId→Filter map
+
+  All functions return new objects (immutable updates, no mutation).
+
+  Tests: src/lib/utils/__tests__/filterTree.test.ts
+  - [ ] Write tests for every function above
+  - [ ] Test deeply nested trees (3+ levels)
+  - [ ] Test edge cases: empty tree, single leaf, remove last child dissolves group
+
+## Phase 1C: Recursive filter engine
+  File: src/lib/engines/filterData.ts
+
+  - [ ] Add overload: filterData(data, tree: FilterTree, options?)
+        Keep existing filterData(data, filters: Filter[], options?) for backwards compatibility
+  - [ ] Implement evaluateNode(row, node): boolean
+        - If leaf: apply single filter (reuse existing applySingleFilter)
+        - If group: evaluate children with group's combination (AND = every, OR = some)
+  - [ ] Short-circuit evaluation: AND stops on first false, OR stops on first true
+  - [ ] Handle enabled flag on leaves (skip disabled leaves)
+  - [ ] Handle empty groups (AND with no children = true, OR with no children = false)
+
+  Tests: src/lib/engines/__tests__/filterTree.test.ts
+  - [ ] Flat tree (root AND with 3 leaves) matches existing behavior
+  - [ ] Nested: (A AND B) OR C
+  - [ ] Nested: A AND (B OR C)
+  - [ ] Deep: ((A AND B) OR (C AND D)) AND E
+  - [ ] Mixed types: text + numeric + set in same group
+  - [ ] Disabled leaves skipped
+  - [ ] Empty groups handled correctly
+
+## Phase 1D: Serialization
+  File: src/lib/utils/filterSerialization.ts
+
+  - [ ] Add serializeFilterTree(tree: FilterTree): SerializedFilterTree
+  - [ ] Add deserializeFilterTree(data: SerializedFilterTree): FilterTree
+  - [ ] Define SerializedFilterTree / SerializedFilterNode types
+        (same structure but Dates → ISO strings, no functions)
+  - [ ] Backward compatibility: if deserialize receives a flat SerializedFilter[],
+        auto-wrap in a root AND group (migration path for existing localStorage data)
+
+  File: src/lib/utils/PerDatasetPersistence.ts
+  - [ ] Update DatasetViewState.activeFilters type to SerializedFilterTree
+  - [ ] Add migration logic: detect old Map format → convert to tree on load
+  - [ ] Update saveFilters() to serialize tree
+  - [ ] Update loadState() to deserialize tree
+
+  Tests: src/lib/utils/__tests__/filterSerialization.test.ts
+  - [ ] Round-trip: serialize → deserialize preserves tree structure
+  - [ ] Backward compat: flat array → tree migration
+  - [ ] Date handling in nested leaves
+
+## Phase 1E: State management migration
+  File: src/lib/state/tableState.svelte.ts
+
+  - [ ] Replace `let filters = $state<Map<string, Filter>>(new Map())`
+        with `let filterTree = $state<FilterTree>(createFilterTree())`
+  - [ ] Replace `let filtersByDataset` to store FilterTree per dataset
+  - [ ] Update processData() to call filterData(rawData, filterTree)
+  - [ ] Keep handleFilterChange(columnId, filter | null) signature working
+        via setFilterForColumn() shim — this is the compat bridge
+  - [ ] Add new tree-aware handlers:
+        - handleAddFilterToGroup(filter, groupId?)
+        - handleRemoveNode(nodeId)
+        - handleUpdateFilter(nodeId, filter)
+        - handleMoveNode(nodeId, targetGroupId, index)
+        - handleGroupNodes(nodeIds, combination)
+        - handleUngroupNode(groupId)
+        - handleGroupCombinationChange(groupId, combination)
+  - [ ] Expose in return object:
+        - get filterTree()
+        - get filters() — compatibility getter via filterTreeToMap()
+        - All new handlers above
+  - [ ] Update serialization in dataset init (deserialize tree, handle migration)
+  - [ ] Update onFilterChange callback to emit serialized tree
+        Decision: emit SerializedFilterTree (breaking) or keep SerializedFilter[] (compat)?
+        Recommendation: emit both — onFilterChange gets flat array, onFilterTreeChange gets tree
+
+## Phase 1F: Component compatibility shim
+  Ensure existing components keep working with minimal changes before Phase 2.
+
+  File: src/lib/ClinicalDataTableV3.svelte
+  - [ ] Pass state.filters (compat Map) to FilterRow, ChartFilterRow, StatusBar
+  - [ ] Pass state.filterTree to FilterBar (will be updated in Phase 2)
+  - [ ] Update filterCount to use getLeafCount(state.filterTree)
+  - [ ] Add new prop: onFilterTreeChange?: (tree: SerializedFilterTree) => void
+  - [ ] Keep initialFilters prop working (backward compat via migration)
+  - [ ] Add optional initialFilterTree prop
+
+  File: src/lib/TableHeader/FilterRow.svelte — no changes yet (uses compat Map)
+  File: src/lib/components/chart-filters/ChartFilterRow.svelte — no changes yet
+  File: src/lib/components/chart-filters/ColumnChart.svelte — no changes yet
+  File: src/lib/components/chart-filters/CategoricalChart.svelte — no changes yet
+  File: src/lib/TableFooter/StatusBar.svelte — no changes yet
+
+  At end of Phase 1: all existing tests pass, UI looks the same, tree is internal.
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 2: READ-ONLY NESTED FILTER BAR
+# ═══════════════════════════════════════════════════════════════════
+#
+# Update the FilterBar to render the tree structure visually.
+# Still read-only (no drag-to-group yet), but shows brackets,
+# nested AND/OR toggles, and per-group controls.
+
+## Phase 2A: FilterGroup component
+  New file: src/lib/components/filter-bar/FilterGroup.svelte
+
+  - [ ] Props: group: FilterGroup, columns: Map, depth: number,
+        onToggleNegation, onRemove, onGroupCombinationChange
+  - [ ] Renders children recursively (FilterChip for leaves, FilterGroup for groups)
+  - [ ] Visual bracket: left border with colored accent per depth level
+        Depth 0 = no bracket (root), depth 1 = primary accent, depth 2 = secondary, etc.
+  - [ ] AND/OR toggle between each child (scoped to this group)
+  - [ ] Group header: small pill showing "Group" + collapse toggle (optional)
+  - [ ] Collapse/expand state per group (local $state)
+  - [ ] Max depth cap: 4 levels (prevent absurd nesting)
+
+## Phase 2B: Update FilterBar for tree rendering
+  File: src/lib/TableHeader/FilterBar.svelte
+
+  - [ ] Change props: filters → filterTree: FilterTree
+  - [ ] Keep columns, onClearAll, maxVisible props
+  - [ ] Replace onFilterChange with tree-aware callbacks:
+        - onRemoveNode(nodeId)
+        - onToggleNegation(nodeId)
+        - onGroupCombinationChange(groupId, combination)
+  - [ ] Render root group's children using FilterGroup component
+  - [ ] Overflow: count leaf nodes, show +N for deeply nested items
+  - [ ] Root-level AND/OR toggle changes root group's combination
+
+## Phase 2C: Update FilterChip for tree context
+  File: src/lib/components/filter-bar/FilterChip.svelte
+
+  - [ ] Add optional prop: depth: number (for subtle styling differences)
+  - [ ] Add optional prop: nodeId: string (for tree-aware callbacks)
+  - [ ] Update onToggleNegation/onRemove to pass nodeId up
+
+## Phase 2D: Update OverflowPopover for tree
+  File: src/lib/components/filter-bar/OverflowPopover.svelte
+
+  - [ ] Show tree structure with indentation in popover
+  - [ ] Use FilterGroup component for nested display
+
+## Phase 2E: Wire into ClinicalDataTableV3
+  File: src/lib/ClinicalDataTableV3.svelte
+
+  - [ ] Pass filterTree to FilterBar instead of flat filters Map
+  - [ ] Wire tree-aware callbacks to state handlers
+
+  At end of Phase 2: brackets render visually, per-group AND/OR works,
+  but users can't create groups through the UI yet (only programmatically).
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 3: INLINE EDITING
+# ═══════════════════════════════════════════════════════════════════
+#
+# Click-to-edit filter values and operators directly in chips.
+
+## Phase 3A: Value editor popover
+  New file: src/lib/components/filter-bar/ValueEditor.svelte
+
+  - [ ] Appears when clicking chip text
+  - [ ] Adapts to filter type:
+        - Text: input field with case-sensitive/whole-word toggles
+        - Numeric: number input (+ value2 for between)
+        - Date: date picker (+ value2 for between)
+        - Set: checkbox list (reuse ValuesPopover pattern)
+        - Boolean: Y/N toggle
+  - [ ] Confirm/cancel buttons
+  - [ ] Escape to cancel, Enter to confirm
+  - [ ] Emits updated filter on confirm
+
+## Phase 3B: Operator picker dropdown
+  New file: src/lib/components/filter-bar/OperatorPicker.svelte
+
+  - [ ] Appears when clicking operator symbol in chip
+  - [ ] Shows available operators for the filter's type:
+        - Text: contains, equals, startsWith, endsWith, isEmpty + negations
+        - Numeric: =, !=, >, >=, <, <=, between, isEmpty + negations
+        - Date: =, !=, before, after, between, isEmpty + negations
+        - Set: in, notIn
+  - [ ] Grouped by positive/negative (separator line between)
+  - [ ] Keyboard navigation (arrow keys + enter)
+  - [ ] Emits updated filter with new operator
+
+## Phase 3C: Integrate editors into FilterChip
+  File: src/lib/components/filter-bar/FilterChip.svelte
+
+  - [ ] Click on chip text → open ValueEditor popover
+  - [ ] Click on operator symbol → open OperatorPicker dropdown
+  - [ ] Add onFilterUpdate(nodeId, filter) callback prop
+  - [ ] Manage popover open/close state
+
+## Phase 3D: Add filter button
+  New file: src/lib/components/filter-bar/AddFilterButton.svelte
+
+  - [ ] "+" button at end of FilterBar
+  - [ ] Step 1: Column picker dropdown (searchable list of columns)
+  - [ ] Step 2: Opens ValueEditor for the selected column with default operator
+  - [ ] Creates new leaf in root group (or specified group)
+  - [ ] Optional: quick-add for columns that already have chart filter distributions
+
+## Phase 3E: Wire editing into FilterBar
+  File: src/lib/TableHeader/FilterBar.svelte
+
+  - [ ] Add onUpdateFilter(nodeId, filter) callback
+  - [ ] Add onAddFilter(filter, groupId?) callback
+  - [ ] Render AddFilterButton at end of chip row
+
+  At end of Phase 3: users can edit values, change operators, and add
+  new filters directly from the bar. No grouping UI yet.
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 4: DRAG-TO-GROUP (Bracket Creation)
+# ═══════════════════════════════════════════════════════════════════
+#
+# Users can drag chips to reorder and create/modify bracket groups.
+
+## Phase 4A: Drag infrastructure
+  New file: src/lib/components/filter-bar/filterBarDragDrop.svelte.ts
+
+  - [ ] Drag state: draggedNodeId, dropTargetNodeId, dropPosition
+  - [ ] Drop positions: 'before' | 'after' | 'into-group' | 'create-group'
+  - [ ] Visual indicators:
+        - Blue line between chips = reorder
+        - Blue bracket overlay = create new group containing dragged + target
+        - Highlight group border = drop into existing group
+  - [ ] Drag threshold: 5px movement before activating (prevents accidental drags)
+  - [ ] Cancel on Escape
+
+## Phase 4B: Drop zone detection
+  File: src/lib/components/filter-bar/filterBarDragDrop.svelte.ts (continued)
+
+  - [ ] Hit detection based on mouse position relative to chip bounds:
+        - Left 25% = insert before
+        - Right 25% = insert after
+        - Center 50% = create group with this chip
+        - Over group border = drop into group
+  - [ ] Visual feedback: drop zone highlights
+  - [ ] Prevent invalid drops (node into its own subtree)
+
+## Phase 4C: Integrate drag into FilterChip
+  File: src/lib/components/filter-bar/FilterChip.svelte
+
+  - [ ] Add draggable attribute
+  - [ ] Add drag event handlers (dragstart, dragend)
+  - [ ] Visual state: opacity change when dragging
+  - [ ] Set drag data with nodeId
+
+## Phase 4D: Integrate drag into FilterGroup
+  File: src/lib/components/filter-bar/FilterGroup.svelte
+
+  - [ ] Drop zone for dropping chips into group
+  - [ ] "Ungroup" button on group header (dissolves group)
+  - [ ] Drag entire group as a unit
+
+## Phase 4E: Integrate into FilterBar
+  File: src/lib/TableHeader/FilterBar.svelte
+
+  - [ ] Initialize drag state
+  - [ ] Handle drop events → call appropriate state handlers:
+        - Reorder → handleMoveNode
+        - Create group → handleGroupNodes
+        - Drop into group → handleMoveNode
+  - [ ] Drop zone indicators between chips and at group boundaries
+
+## Phase 4F: Context menu
+  New file: src/lib/components/filter-bar/FilterContextMenu.svelte
+
+  - [ ] Right-click chip → context menu:
+        - "Negate" (toggle NOT)
+        - "Edit value..."
+        - "Change operator..."
+        - "Group with..." → enter multi-select mode
+        - "Remove from group" (if in a group)
+        - "Delete"
+  - [ ] Right-click group header → context menu:
+        - "Change to AND/OR"
+        - "Ungroup"
+        - "Negate all in group"
+        - "Delete group"
+
+  At end of Phase 4: full drag-to-group support with visual bracket creation.
+
+# ═══════════════════════════════════════════════════════════════════
+# PHASE 5: POLISH & POWER FEATURES
+# ═══════════════════════════════════════════════════════════════════
+
+## Phase 5A: Undo/redo
+  New file: src/lib/utils/filterTreeHistory.ts
+
+  - [ ] History stack of FilterTree snapshots (max 50)
+  - [ ] push(tree): void
+  - [ ] undo(): FilterTree | null
+  - [ ] redo(): FilterTree | null
+  - [ ] canUndo / canRedo getters
+  - [ ] Ctrl+Z / Ctrl+Shift+Z keyboard shortcuts in FilterBar
+
+## Phase 5B: Filter expression text display
+  New file: src/lib/utils/filterTreeFormatting.ts
+
+  - [ ] treeToExpression(tree): string
+        Example: "(AGE > 30 & SEX = "M") | COUNTRY = "US""
+  - [ ] Show in StatusBar or tooltip on FilterBar
+  - [ ] Syntax highlighting in expression (operators colored differently)
+
+## Phase 5C: Multi-select mode
+  File: src/lib/TableHeader/FilterBar.svelte
+
+  - [ ] Shift+click to select multiple chips
+  - [ ] Ctrl+click to toggle selection
+  - [ ] Bulk actions toolbar: "Group selected", "Delete selected", "Negate selected"
+  - [ ] Visual: selected chips get highlight border
+
+## Phase 5D: Keyboard navigation
+  File: src/lib/TableHeader/FilterBar.svelte
+
+  - [ ] Tab/Shift+Tab to navigate between chips
+  - [ ] Enter to edit focused chip
+  - [ ] Delete/Backspace to remove focused chip
+  - [ ] Arrow keys within groups
+  - [ ] Alt+Arrow to move chip between groups
+
+## Phase 5E: Accessibility
+  - [ ] ARIA tree role on FilterBar
+  - [ ] ARIA treeitem role on chips/groups
+  - [ ] aria-expanded on collapsible groups
+  - [ ] aria-level for nesting depth
+  - [ ] Screen reader announcements for drag-drop operations
+  - [ ] Focus management after add/remove/group operations
+
+## Phase 5F: Performance guardrails
+  - [ ] Max tree depth: 4 (prevent performance degradation with deep nesting)
+  - [ ] Max leaf count warning: 20+ filters shows performance notice
+  - [ ] Debounce tree mutations that trigger reprocessing (already have 100ms debounce)
+  - [ ] Memoize getLeafFilters() for compatibility shim
+
+# ═══════════════════════════════════════════════════════════════════
+# ARCHITECTURE DECISIONS (record here as they're made)
+# ═══════════════════════════════════════════════════════════════════
+#
+# Q: Where do chart filters (brush selections) attach in the tree?
+# A: TBD — Recommendation: always at root level as direct children.
+#    Chart filters are quick, visual interactions — nesting them would
+#    be confusing. They show as regular leaves in the bar but originate
+#    from chart interaction rather than manual creation.
+#
+# Q: External API — break or preserve backward compatibility?
+# A: TBD — Recommendation: dual callbacks.
+#    - onFilterChange (existing) emits flat SerializedFilter[] (compat)
+#    - onFilterTreeChange (new) emits SerializedFilterTree
+#    - initialFilters (existing) accepts flat array (auto-migrated to tree)
+#    - initialFilterTree (new) accepts tree directly
+#    Deprecate flat versions after consumers migrate.
+#
+# Q: Can a column appear in multiple leaves across different groups?
+# A: TBD — Recommendation: Yes. Example: AGE > 18 in group 1, AGE < 65
+#    in group 2. The setFilterForColumn() compat shim updates the first
+#    match only. Tree-aware UI can manage multiple.
+#
+# Q: How does FilterRow (inline per-column inputs) work with tree?
+# A: TBD — Recommendation: FilterRow continues to use the compat Map.
+#    It represents "quick filter per column" and always targets the root
+#    group. For multi-filter-per-column scenarios, use the FilterBar UI.
+#
+# ═══════════════════════════════════════════════════════════════════
+# FILE IMPACT SUMMARY
+# ═══════════════════════════════════════════════════════════════════
+#
+# New files (Phase 1-4):
+#   src/lib/utils/filterTree.ts                          Phase 1B
+#   src/lib/utils/__tests__/filterTree.test.ts           Phase 1B
+#   src/lib/engines/__tests__/filterTree.test.ts         Phase 1C
+#   src/lib/utils/__tests__/filterSerialization.test.ts  Phase 1D
+#   src/lib/components/filter-bar/FilterGroup.svelte     Phase 2A
+#   src/lib/components/filter-bar/ValueEditor.svelte     Phase 3A
+#   src/lib/components/filter-bar/OperatorPicker.svelte  Phase 3B
+#   src/lib/components/filter-bar/AddFilterButton.svelte Phase 3D
+#   src/lib/components/filter-bar/filterBarDragDrop.svelte.ts  Phase 4A
+#   src/lib/components/filter-bar/FilterContextMenu.svelte     Phase 4F
+#   src/lib/utils/filterTreeHistory.ts                   Phase 5A
+#   src/lib/utils/filterTreeFormatting.ts                Phase 5B
+#
+# Modified files:
+#   src/lib/types/filters.ts                   Phase 1A
+#   src/lib/engines/filterData.ts              Phase 1C
+#   src/lib/utils/filterSerialization.ts       Phase 1D
+#   src/lib/utils/PerDatasetPersistence.ts     Phase 1D
+#   src/lib/state/tableState.svelte.ts         Phase 1E
+#   src/lib/ClinicalDataTableV3.svelte         Phase 1F, 2E, 3E
+#   src/lib/TableHeader/FilterBar.svelte       Phase 2B, 3E, 4E, 5C, 5D
+#   src/lib/components/filter-bar/FilterChip.svelte      Phase 2C, 3C, 4C
+#   src/lib/components/filter-bar/OverflowPopover.svelte Phase 2D
+#   src/lib/components/filter-bar/index.ts     Phase 2A (add exports)
+#   src/lib/TableHeader/index.ts               (no change — FilterBar already exported)
+#   src/lib/index.ts                           Phase 1A (export new types)
+#   src/lib/TableFooter/StatusBar.svelte       Phase 2E (tree-aware count)
+#
+# Unchanged (use compat shim):
+#   src/lib/TableHeader/FilterRow.svelte       (uses compat Map via state.filters)
+#   src/lib/components/chart-filters/*         (uses compat Map via state.filters)
+#   src/lib/components/filters/*               (leaf-level, no tree awareness needed)
+#   src/lib/utils/filterNegation.ts            (operates on individual filters)
+#   src/lib/utils/filterFormatting.ts          (operates on individual filters)
