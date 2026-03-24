@@ -2,20 +2,13 @@
 	import { page } from '$app/stores';
 	import { extractDefineDataForMetadata } from '$lib/utils/metadata';
 	
-	import { metadataEditState, type DefineType } from '$lib/core/state/metadata/editState.svelte';
-	import EditableTextArea from '$lib/components/metadata/edit/EditableTextArea.svelte';
-	import ConfirmDeleteModal from '$lib/components/metadata/shared/ConfirmDeleteModal.svelte';
-
-	// Import shared utilities
-	import { mergeItemWithChanges, recordFieldChange } from '$lib/utils/metadata/useEditableItem.svelte';
-	import { isItemDeleted, handleDeleteOrReinstate } from '$lib/utils/metadata/useDeleteModal.svelte';
 	import { goto } from '$app/navigation';
 
 	// Extract Define-XML data
 	const defineBundle = $derived(extractDefineDataForMetadata());
 
 	// Determine define type and get active defineData
-	const defineType = $derived<DefineType>((defineBundle.adamData ? 'adam' : 'sdtm'));
+	const defineType = $derived<'adam' | 'sdtm'>((defineBundle.adamData ? 'adam' : 'sdtm'));
 	const activeDefineData = $derived(
 		defineType === 'adam'
 			? defineBundle.adamData?.defineData
@@ -35,35 +28,6 @@
 	const comment = $derived(
 		activeDefineData.Comments?.find((c) => c.OID === $page.params.oid)
 	);
-
-	// Use shared utility for editable state
-	const editableComment = $derived.by(() =>
-		mergeItemWithChanges(comment, defineType, 'comments', comment?.OID)
-	);
-
-	// Field change handler
-	function handleDescriptionChange(newDescription: string) {
-		recordFieldChange(comment, defineType, 'comments', 'Description', newDescription);
-	}
-
-	// Delete modal state
-	let showDeleteModal = $state(false);
-	const isAlreadyDeleted = $derived(isItemDeleted(defineType, 'comments', comment?.OID));
-	const deleteModalMode = $derived(isAlreadyDeleted ? 'reinstate' : 'delete');
-
-	// Delete action handlers
-	function handleDeleteComment() {
-		showDeleteModal = true;
-	}
-
-	function confirmDeleteComment() {
-		handleDeleteOrReinstate(comment, defineType, 'comments', isAlreadyDeleted);
-		showDeleteModal = false;
-	}
-
-	function cancelDeleteComment() {
-		showDeleteModal = false;
-	}
 
 	// Find items that reference this comment
 	const usedByItems = $derived.by(() => {
@@ -118,38 +82,14 @@
 				<span>Comment</span>
 				<span>›</span>
 				<span>{comment.OID}</span>
-				{#if isAlreadyDeleted}
-					<span class="ml-2 rounded bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
-						Deleted
-					</span>
-				{/if}
 			</div>
-			<div class="flex items-center justify-between">
-				<h1 class="mb-2 text-3xl font-bold">{comment.OID}</h1>
-				{#if metadataEditState.editMode}
-					<button
-						onclick={handleDeleteComment}
-						class="rounded px-3 py-1 text-sm transition-colors
-						       {isAlreadyDeleted
-							? 'bg-success text-success-foreground hover:bg-success/90'
-							: 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}"
-					>
-						{isAlreadyDeleted ? 'Reinstate' : 'Delete'}
-					</button>
-				{/if}
-			</div>
+			<h1 class="mb-2 text-3xl font-bold">{comment.OID}</h1>
 		</div>
 
 		<!-- Comment Text -->
 		<div class="mb-6 rounded-lg border bg-card p-4">
 			<h2 class="mb-2 text-lg font-semibold">Comment Text</h2>
-			<EditableTextArea
-				value={editableComment?.Description || ''}
-				onSave={handleDescriptionChange}
-				disabled={!metadataEditState.editMode || isAlreadyDeleted}
-				placeholder="No comment text available"
-				rows={5}
-			/>
+			<p class="text-sm whitespace-pre-wrap">{comment.Description || 'No comment text available'}</p>
 		</div>
 
 		<!-- Used By (Items) -->
@@ -186,22 +126,6 @@
 			</div>
 		</div>
 	</div>
-
-	<!-- Delete Confirmation Modal -->
-	{#if showDeleteModal}
-		<ConfirmDeleteModal
-			open={showDeleteModal}
-			itemName={comment.OID || 'this comment'}
-			itemType="comment"
-			mode={deleteModalMode}
-			impactedItems={usedByItems.map((item) => ({
-				name: item.displayName,
-				type: item.type
-			}))}
-			onConfirm={confirmDeleteComment}
-			onCancel={cancelDeleteComment}
-		/>
-	{/if}
 {:else}
 	<div class="mx-auto max-w-2xl text-center">
 		<h1 class="mb-4 text-2xl font-bold">Comment Not Found</h1>

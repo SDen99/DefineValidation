@@ -2,7 +2,6 @@
 	import type { VLMTableData, ParameterGroup } from '$lib/utils/metadata/vlmTableTransform';
 	import { formatRowLabel } from '$lib/utils/metadata/vlmTableTransform';
 	import VLMCell from './VLMCell.svelte';
-	import { metadataEditState as editState, type DefineType } from '$lib/core/state/metadata/editState.svelte';
 	import { page } from '$app/stores';
 
 	/**
@@ -26,8 +25,7 @@
 		vlmData,
 		defineData = null,
 		defineType = 'adam',
-		editMode = false,
-		groupByParameter = true, // NEW: Toggle between grouped and flat view
+		groupByParameter = true, // Toggle between grouped and flat view
 		onNavigateToMethod = () => {},
 		onNavigateToCodeList = () => {},
 		onNavigateToWhereClause = () => {},
@@ -35,8 +33,7 @@
 	}: {
 		vlmData: VLMTableData | null;
 		defineData?: any; // ParsedDefineXML passed to VLMCell
-		defineType?: DefineType;
-		editMode?: boolean;
+		defineType?: 'adam' | 'sdtm';
 		groupByParameter?: boolean;
 		onNavigateToMethod?: (oid: string) => void;
 		onNavigateToCodeList?: (oid: string) => void;
@@ -238,7 +235,6 @@
 										{onNavigateToCodeList}
 										{onNavigateToWhereClause}
 										{onNavigateToComment}
-										{editMode}
 										showWhereClause={true}
 									/>
 								</td>
@@ -279,7 +275,6 @@
 												{onNavigateToCodeList}
 												{onNavigateToWhereClause}
 												{onNavigateToComment}
-												{editMode}
 												showWhereClause={true}
 											/>
 										</td>
@@ -323,7 +318,6 @@
 										{onNavigateToCodeList}
 										{onNavigateToWhereClause}
 										{onNavigateToComment}
-										{editMode}
 										showWhereClause={false}
 									/>
 								</td>
@@ -335,20 +329,6 @@
 		</table>
 </div>
 
-<!-- Add Parameter Button (edit mode only) -->
-{#if editMode}
-	<div class="border-t p-4">
-		<button
-			class="rounded-lg border border-dashed border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-			onclick={() => {
-				// TODO: Open AddParameterModal (Milestone 5)
-				console.log('Add Parameter clicked');
-			}}
-		>
-			+ Add Parameter
-		</button>
-	</div>
-{/if}
 {/if}
 
 <style>

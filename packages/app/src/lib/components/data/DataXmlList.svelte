@@ -6,8 +6,6 @@
 	import ConfirmationDialog from '$lib/components/shared/ConfirmationDialog.svelte';
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
 	import * as appState from '$lib/core/state/appState.svelte.ts';
-	import { metadataEditState } from '$lib/core/state/metadata/editState.svelte';
-	import { mergeItemWithChanges } from '$lib/utils/metadata/useEditableItem.svelte';
 	import type { ItemGroup } from '@sden99/cdisc-types';
 	import { ScrollArea } from '@sden99/ui-components';
 	import { goto } from '$app/navigation';
@@ -55,31 +53,8 @@
 		return filteredDatasets.map((d) => {
 			const originalName = dataState.getOriginalFilename(d.id) || d.name;
 			const state = dataState.getDatasetState(originalName);
-			const rawMetadata = dataState.getItemGroupMetadata(d.name) as ItemGroup | null;
-
-			// Check if this dataset is marked as deleted in the edit state
-			// and merge any pending edit changes into the displayed metadata
-			let isDeleted = false;
+			const metadata = dataState.getItemGroupMetadata(d.name) as ItemGroup | null;
 			const datasetInfo = findDatasetOIDWithType(d.name);
-			let metadata = rawMetadata;
-			if (datasetInfo) {
-				const changeRecord = metadataEditState.getChange(
-					datasetInfo.defineType,
-					'datasets',
-					datasetInfo.oid
-				);
-				isDeleted = changeRecord?.type === 'DELETED';
-
-				// Merge pending field edits so sidebar cards reflect changes
-				if (rawMetadata && changeRecord) {
-					metadata = mergeItemWithChanges(
-						rawMetadata,
-						datasetInfo.defineType,
-						'datasets',
-						datasetInfo.oid
-					) as ItemGroup | null;
-				}
-			}
 
 			// A card is considered "selected" if its normalized name matches EITHER:
 			// 1. The specific domain being viewed (e.g., "adsl").
@@ -99,7 +74,6 @@
 				state,
 				metadata,
 				isSelected,
-				isDeleted,
 				validationIssueCount,
 				oid: datasetInfo?.oid || null,
 				defineType: datasetInfo?.defineType || null
@@ -211,7 +185,6 @@
 							datasetState={props.state}
 							metadata={props.metadata}
 							isSelected={props.isSelected}
-							isDeleted={props.isDeleted}
 							validationIssueCount={props.validationIssueCount}
 							onDelete={() => handleDeleteClick(props.originalName)}
 							onClick={() => handleDatasetClick(props.originalName)}

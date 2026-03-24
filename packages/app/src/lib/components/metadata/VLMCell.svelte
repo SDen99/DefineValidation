@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { VLMCell } from '$lib/utils/metadata/vlmTableTransform';
-	import { metadataEditState as editState, type DefineType } from '$lib/core/state/metadata/editState.svelte';
 	import { page } from '$app/stores';
 	import type { ParsedDefineXML } from '@sden99/cdisc-types';
 	import InlineMethodDisplay from '$lib/components/metadata/shared/InlineMethodDisplay.svelte';
@@ -32,17 +31,15 @@
 		onNavigateToCodeList,
 		onNavigateToWhereClause,
 		onNavigateToComment,
-		editMode = false,
 		showWhereClause = true
 	}: {
 		cell: VLMCell | null | undefined;
 		defineData?: ParsedDefineXML | null;
-		defineType?: DefineType;
+		defineType?: 'adam' | 'sdtm';
 		onNavigateToMethod?: (oid: string) => void;
 		onNavigateToCodeList?: (oid: string) => void;
 		onNavigateToWhereClause?: (oid: string) => void;
 		onNavigateToComment?: (oid: string) => void;
-		editMode?: boolean;
 		showWhereClause?: boolean;
 	} = $props();
 

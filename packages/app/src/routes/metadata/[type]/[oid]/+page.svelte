@@ -3,18 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { extractDefineDataForMetadata } from '$lib/utils/metadata';
 	import ExpandableSection from '$lib/components/metadata/shared/ExpandableSection.svelte';
-	import ConfirmDeleteModal from '$lib/components/metadata/shared/ConfirmDeleteModal.svelte';
-	import VariablePickerModal from '$lib/components/metadata/edit/VariablePickerModal.svelte';
-	import { metadataEditState, type DefineType } from '$lib/core/state/metadata/editState.svelte';
-	import { drawerState } from '$lib/core/state/metadata/drawerState.svelte';
-	import {
-		mergeItemWithChanges,
-		hasItemChanges
-	} from '$lib/utils/metadata/useEditableItem.svelte';
-	import {
-		isItemDeleted,
-		handleDeleteOrReinstate
-	} from '$lib/utils/metadata/useDeleteModal.svelte';
 	import type { ItemDef } from '@sden99/cdisc-types/define-xml';
 	import { Badge } from '@sden99/ui-components';
 	import DatasetNavigationTabs from '$lib/components/navigation/DatasetNavigationTabs.svelte';
@@ -131,7 +119,7 @@
 	const dataset = $derived(isDataset ? item : null);
 
 	// Determine define type based on where the current dataset is actually found
-	const defineType = $derived<DefineType>(
+	const defineType = $derived<'adam' | 'sdtm'>(
 		isDataset && itemOid &&
 		defineBundle.sdtmData?.defineData?.ItemGroups?.some((ig) => ig.OID === itemOid)
 			? 'sdtm'
@@ -139,132 +127,6 @@
 				? 'adam'
 				: 'sdtm'
 	);
-
-	// Editable dataset with merged changes
-	const editableDataset = $derived.by(() =>
-		dataset ? mergeItemWithChanges(dataset, defineType, 'datasets', dataset.OID) : null
-	);
-
-	// Delete modal state
-	let showDeleteModal = $state(false);
-	const isAlreadyDeleted = $derived(isItemDeleted(defineType, 'datasets', dataset?.OID));
-	const deleteModalMode = $derived(isAlreadyDeleted ? 'reinstate' : 'delete');
-
-	// Variable picker modal state
-	let showVariablePicker = $state(false);
-
-	// Get all available variables for the picker (from both ADaM and SDTM)
-	const availableVariables = $derived.by(() => {
-		return defineBundle.combined?.ItemDefs || [];
-	});
-
-	// Get OIDs of variables already in the dataset to exclude from picker
-	const existingVariableOIDs = $derived.by(() => {
-		if (!dataset?.OID || !editableDataset) return [];
-		return (editableDataset.ItemRefs || []).map((ref) => ref.OID || '').filter(Boolean);
-	});
-
-	// Delete action handlers
-	function handleDeleteDataset() {
-		showDeleteModal = true;
-	}
-
-	function confirmDeleteDataset() {
-		handleDeleteOrReinstate(dataset, defineType, 'datasets', isAlreadyDeleted);
-		showDeleteModal = false;
-	}
-
-	function cancelDeleteDataset() {
-		showDeleteModal = false;
-	}
-
-	// Variable management handlers
-	function handleAddVariable() {
-		showVariablePicker = true;
-	}
-
-	function handleSelectVariable(variable: ItemDef) {
-		if (!dataset?.OID || !editableDataset || !variable.OID) return;
-
-		// Get current ItemRefs
-		const currentItemRefs = [...(editableDataset.ItemRefs || [])];
-
-		// Check if variable is already in dataset
-		if (currentItemRefs.some((ref) => ref.OID === variable.OID)) {
-			console.warn(`Variable ${variable.OID} is already in dataset ${dataset.OID}`);
-			showVariablePicker = false;
-			return;
-		}
-
-		// Calculate next OrderNumber
-		const maxOrderNumber = Math.max(
-			0,
-			...currentItemRefs.map((ref) => parseInt(ref.OrderNumber || '0'))
-		);
-		const nextOrderNumber = (maxOrderNumber + 1).toString();
-
-		// Create new ItemRef
-		const newItemRef = {
-			OID: variable.OID,
-			Mandatory: 'No',
-			OrderNumber: nextOrderNumber,
-			KeySequence: null,
-			MethodOID: null,
-			WhereClauseOID: null,
-			Role: null,
-			RoleCodeListOID: null
-		};
-
-		// Add to ItemRefs
-		const updatedItemRefs = [...currentItemRefs, newItemRef];
-
-		// Record change
-		metadataEditState.recordChange(
-			defineType,
-			'datasets',
-			dataset.OID,
-			'ItemRefs',
-			updatedItemRefs,
-			editableDataset.ItemRefs || dataset.ItemRefs
-		);
-
-		showVariablePicker = false;
-	}
-
-	function handleRemoveVariable(variableOID: string) {
-		if (!dataset?.OID || !editableDataset) return;
-
-		// Confirm deletion
-		if (!confirm(`Remove variable ${variableOID} from this dataset?`)) {
-			return;
-		}
-
-		// Get current ItemRefs
-		const currentItemRefs = [...(editableDataset.ItemRefs || [])];
-
-		// Filter out the target ItemRef
-		const updatedItemRefs = currentItemRefs.filter((ref) => ref.OID !== variableOID);
-
-		// Renumber OrderNumbers
-		const renumberedItemRefs = updatedItemRefs.map((ref, index) => ({
-			...ref,
-			OrderNumber: (index + 1).toString()
-		}));
-
-		// Record change
-		metadataEditState.recordChange(
-			defineType,
-			'datasets',
-			dataset.OID,
-			'ItemRefs',
-			renumberedItemRefs,
-			editableDataset.ItemRefs || dataset.ItemRefs
-		);
-	}
-
-	function handleCancelVariablePicker() {
-		showVariablePicker = false;
-	}
 
 	// Expansion state for inline metadata
 	let expandedSections = $state<Set<string>>(new Set());
@@ -283,148 +145,37 @@
 		expandedSections = new Set(expandedSections);
 	}
 
-	// Drag and drop state for variable reordering
-	let draggedIndex = $state<number | null>(null);
-	let dropTargetIndex = $state<number | null>(null);
-
-	// Drag and drop handlers
-	function handleDragStart(event: DragEvent, index: number) {
-		if (!metadataEditState.editMode || isAlreadyDeleted) return;
-		draggedIndex = index;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-		}
-	}
-
-	function handleDragEnd() {
-		draggedIndex = null;
-		dropTargetIndex = null;
-	}
-
-	function handleDragOver(event: DragEvent, index: number) {
-		event.preventDefault();
-		if (!metadataEditState.editMode || isAlreadyDeleted) return;
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-		if (draggedIndex !== null && draggedIndex !== index) {
-			dropTargetIndex = index;
-		}
-	}
-
-	function handleDragLeave() {
-		dropTargetIndex = null;
-	}
-
-	function handleDropVariable(event: DragEvent, toIndex: number) {
-		event.preventDefault();
-
-		if (!dataset?.OID || !editableDataset || draggedIndex === null) return;
-		if (draggedIndex === toIndex) return;
-
-		// Get current ItemRefs (with any pending changes applied)
-		const items = [...(editableDataset.ItemRefs || [])];
-
-		// Reorder the items
-		const [movedItem] = items.splice(draggedIndex, 1);
-		items.splice(toIndex, 0, movedItem);
-
-		// Renumber OrderNumbers
-		items.forEach((item, i) => {
-			item.OrderNumber = (i + 1).toString();
-		});
-
-		// Record the change
-		metadataEditState.recordChange(
-			defineType,
-			'datasets',
-			dataset.OID,
-			'ItemRefs',
-			items,
-			editableDataset.ItemRefs || dataset.ItemRefs
-		);
-
-		draggedIndex = null;
-		dropTargetIndex = null;
-	}
-
 	// Get variable details for datasets
 	const variablesWithDetails = $derived.by(() => {
-		if (!isDataset || !dataset?.OID || !editableDataset) return [];
-
-		// Search in combined data to find items from both ADaM and SDTM
+		if (!isDataset || !dataset?.OID) return [];
 		if (!defineBundle.combined) return [];
 
-		// Use editableDataset.ItemRefs (same source we modify in drop handler)
-		const itemRefs = editableDataset.ItemRefs || [];
+		const itemRefs = dataset.ItemRefs || [];
 
-		return itemRefs
-			.map((ref: any) => {
-				const variable = defineBundle.combined.ItemDefs?.find((v: any) => v.OID === ref.OID);
+		return itemRefs.map((ref: any) => {
+			const variable = defineBundle.combined.ItemDefs?.find((v: any) => v.OID === ref.OID);
+			const method = ref.MethodOID
+				? defineBundle.combined.Methods?.find((m: any) => m.OID === ref.MethodOID)
+				: null;
+			const codelist = variable?.CodeListOID
+				? defineBundle.combined.CodeLists?.find((cl: any) => cl.OID === variable.CodeListOID)
+				: null;
+			const comment = variable?.CommentOID
+				? defineBundle.combined.Comments?.find((c: any) => c.OID === variable.CommentOID)
+				: null;
 
-				// Check variable edit status
-				const variableChange = variable?.OID
-					? metadataEditState.getChange(defineType, 'variables', variable.OID)
-					: null;
-				const isVariableDeleted = variableChange?.type === 'DELETED';
-				const isVariableModified = variableChange && !isVariableDeleted;
-				const isVariableAdded = variableChange?.type === 'ADDED';
-
-				const method = ref.MethodOID
-					? defineBundle.combined.Methods?.find((m: any) => m.OID === ref.MethodOID)
-					: null;
-				const codelist = variable?.CodeListOID
-					? defineBundle.combined.CodeLists?.find((cl: any) => cl.OID === variable.CodeListOID)
-					: null;
-				const comment = variable?.CommentOID
-					? defineBundle.combined.Comments?.find((c: any) => c.OID === variable.CommentOID)
-					: null;
-
-				// Check if associated items are deleted or modified
-				const codelistChange = codelist?.OID
-					? metadataEditState.getChange(defineType, 'codelists', codelist.OID)
-					: null;
-				const isCodelistDeleted = codelistChange?.type === 'DELETED';
-				const isCodelistModified = codelistChange && !isCodelistDeleted;
-
-				const commentChange = comment?.OID
-					? metadataEditState.getChange(defineType, 'comments', comment.OID)
-					: null;
-				const isCommentDeleted = commentChange?.type === 'DELETED';
-				const isCommentModified = commentChange && !isCommentDeleted;
-
-				const methodChange = method?.OID
-					? metadataEditState.getChange(defineType, 'methods', method.OID)
-					: null;
-				const isMethodDeleted = methodChange?.type === 'DELETED';
-				const isMethodModified = methodChange && !isMethodDeleted;
-
-				return {
-					ref,
-					variable,
-					name: variable?.Name || ref.OID || '(unknown)',
-					dataType: variable?.DataType || '',
-					length: variable?.Length || '',
-					method,
-					codelist,
-					comment,
-					hasWhereClause: !!ref.WhereClauseOID,
-					// Status flags
-					isVariableDeleted,
-					isVariableModified,
-					isVariableAdded,
-					isCodelistDeleted,
-					isCodelistModified,
-					isCommentDeleted,
-					isCommentModified,
-					isMethodDeleted,
-					isMethodModified
-				};
-			})
-			.filter(({ isVariableDeleted }) => {
-				// Exclude variables that are marked as deleted
-				return !isVariableDeleted;
-			});
+			return {
+				ref,
+				variable,
+				name: variable?.Name || ref.OID || '(unknown)',
+				dataType: variable?.DataType || '',
+				length: variable?.Length || '',
+				method,
+				codelist,
+				comment,
+				hasWhereClause: !!ref.WhereClauseOID
+			};
+		});
 	});
 
 	// Get validation results for this dataset
@@ -583,7 +334,7 @@
 			Could not find {itemType} item with OID: <code class="bg-muted rounded px-1">{itemOid}</code>
 		</p>
 	</div>
-{:else if isDataset && dataset && editableDataset}
+{:else if isDataset && dataset}
 	<!-- Dataset Detail View -->
 	<div class="mx-auto h-full overflow-auto p-3" style="max-width: 1400px;">
 		<!-- Header -->
@@ -592,40 +343,12 @@
 				<div class="text-muted-foreground flex items-center gap-2 text-sm">
 					<span>Dataset</span>
 					<span>›</span>
-					<span>{editableDataset.Name || dataset.OID}</span>
-					{#if hasItemChanges(defineType, 'datasets', dataset.OID)}
-						<span class="bg-warning text-warning-foreground rounded-full px-2 py-0.5 text-xs"
-							>Modified</span
-						>
-					{/if}
+					<span>{dataset.Name || dataset.OID}</span>
 				</div>
 			</div>
 
 			<div class="flex items-center gap-3">
-				<h1 class="text-2xl font-bold">{editableDataset.Name || dataset.OID}</h1>
-				<!-- Edit Details button (only in edit mode) -->
-				{#if metadataEditState.editMode}
-					<button
-						onclick={() =>
-							drawerState.open({
-								oid: dataset.OID,
-								itemType: 'datasets',
-								defineType
-							})}
-						class="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors"
-						title="Edit dataset details"
-					>
-						<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-							/>
-						</svg>
-						Edit Details
-					</button>
-				{/if}
+				<h1 class="text-2xl font-bold">{dataset.Name || dataset.OID}</h1>
 				<!-- Validation status indicator -->
 				{#if totalValidationIssues > 0}
 					<span
@@ -643,8 +366,8 @@
 					</span>
 				{/if}
 			</div>
-			{#if editableDataset.Description}
-				<p class="text-muted-foreground mt-1 text-sm">{editableDataset.Description}</p>
+			{#if dataset.Description}
+				<p class="text-muted-foreground mt-1 text-sm">{dataset.Description}</p>
 			{/if}
 		</div>
 
@@ -669,22 +392,6 @@
 						</span>
 					{/if}
 				</h2>
-				{#if metadataEditState.editMode && !isAlreadyDeleted}
-					<button
-						onclick={handleAddVariable}
-						class="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors"
-					>
-						<svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M12 4v16m8-8H4"
-							/>
-						</svg>
-						Add Variable
-					</button>
-				{/if}
 			</div>
 			<div class="p-2">
 
@@ -693,12 +400,6 @@
 						<table class="w-full border-collapse text-sm">
 							<thead>
 								<tr class="bg-muted/50 border-b">
-									<th class="w-6 p-0"></th>
-									<th class="w-14 p-0 text-center text-xs font-medium">
-										{#if metadataEditState.editMode && !isAlreadyDeleted}
-											Actions
-										{/if}
-									</th>
 									<th class="px-1.5 py-0.5 text-center text-xs font-medium">Key</th>
 									<th class="px-1.5 py-0.5 text-left text-xs font-medium">Order</th>
 									<th class="px-1.5 py-0.5 text-left text-xs font-medium">Metadata</th>
@@ -709,97 +410,11 @@
 								</tr>
 							</thead>
 							<tbody>
-								{#each variablesWithDetails as { ref, variable, name, dataType, length, method, codelist, comment, hasWhereClause, isVariableModified, isVariableAdded, isCodelistDeleted, isCodelistModified, isCommentDeleted, isCommentModified, isMethodDeleted, isMethodModified }, index (ref.OID)}
+								{#each variablesWithDetails as { ref, variable, name, dataType, length, method, codelist, comment, hasWhereClause }, index (ref.OID)}
 									{@const variableOid = variable?.OID || ''}
-									{@const hasDeletedDependencies =
-										isCodelistDeleted || isCommentDeleted || isMethodDeleted}
-									{@const hasModifiedDependencies =
-										isCodelistModified || isCommentModified || isMethodModified}
 									<tr
-										draggable={metadataEditState.editMode && !isAlreadyDeleted}
-										ondragstart={(e) => handleDragStart(e, index)}
-										ondragend={handleDragEnd}
-										ondragover={(e) => handleDragOver(e, index)}
-										ondragleave={handleDragLeave}
-										ondrop={(e) => handleDropVariable(e, index)}
-										class="hover:bg-muted/30 border-b transition-colors
-											       {isVariableAdded ? 'bg-green-50 dark:bg-green-950/20' : ''}
-											       {draggedIndex === index ? 'opacity-50' : ''}
-											       {dropTargetIndex === index ? 'border-primary bg-primary/5 border-l-4' : ''}"
+										class="hover:bg-muted/30 border-b transition-colors"
 									>
-										<!-- Drag Handle -->
-										<td class="w-6 p-0">
-											{#if metadataEditState.editMode && !isAlreadyDeleted}
-												<div class="text-muted-foreground flex cursor-move items-center justify-center" title="Drag to reorder">
-													<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-														<path
-															d="M9 3h2v2H9V3zm0 4h2v2H9V7zm0 4h2v2H9v-2zm0 4h2v2H9v-2zm0 4h2v2H9v-2zm4-16h2v2h-2V3zm0 4h2v2h-2V7zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z"
-														/>
-													</svg>
-												</div>
-											{/if}
-										</td>
-
-										<!-- Actions -->
-										<td class="w-14 p-0 text-center">
-											{#if metadataEditState.editMode && !isAlreadyDeleted}
-												<div class="flex items-center justify-center gap-1">
-													<!-- Edit button -->
-													<button
-														onclick={(e) => {
-															e.preventDefault();
-															e.stopPropagation();
-															console.log('[Dataset] Opening drawer for variable:', ref.OID);
-															ref.OID &&
-																drawerState.open({
-																	oid: ref.OID,
-																	itemType: 'variables',
-																	defineType
-																});
-														}}
-														class="text-primary hover:bg-primary/10 inline-flex rounded p-1 transition-colors"
-														title="Edit variable"
-														aria-label="Edit variable {name}"
-													>
-														<svg
-															class="h-4 w-4"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																stroke-linecap="round"
-																stroke-linejoin="round"
-																stroke-width="2"
-																d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-															/>
-														</svg>
-													</button>
-													<!-- Remove button -->
-													<button
-														onclick={() => ref.OID && handleRemoveVariable(ref.OID)}
-														class="text-destructive hover:bg-destructive/10 inline-flex rounded p-1 transition-colors"
-														title="Remove variable from dataset"
-														aria-label="Remove variable {name} from dataset"
-													>
-														<svg
-															class="h-4 w-4"
-															fill="none"
-															stroke="currentColor"
-															viewBox="0 0 24 24"
-														>
-															<path
-																stroke-linecap="round"
-																stroke-linejoin="round"
-																stroke-width="2"
-																d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-															/>
-														</svg>
-													</button>
-												</div>
-											{/if}
-										</td>
-
 										<!-- Key Sequence -->
 										<td class="px-1.5 py-0.5 text-center">
 											{#if ref.KeySequence}
@@ -837,16 +452,8 @@
 														class="inline-flex rounded px-1.5 py-0.5 text-xs font-medium transition-colors
 															       {isExpanded(variableOid, 'codelist')
 															? 'bg-blue-600 text-white'
-															: isCodelistDeleted
-																? 'bg-red-500/10 text-red-600 line-through hover:bg-red-500/20'
-																: isCodelistModified
-																	? 'border border-orange-300 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20'
-																	: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'}"
-														title={isCodelistDeleted
-															? 'CodeList deleted'
-															: isCodelistModified
-																? 'CodeList modified'
-																: 'Click to toggle Codelist details'}
+															: 'bg-blue-500/10 text-blue-600 hover:bg-blue-500/20'}"
+														title="Click to toggle Codelist details"
 													>
 														CL
 													</button>
@@ -857,16 +464,8 @@
 														class="inline-flex rounded px-1.5 py-0.5 text-xs font-medium transition-colors
 															       {isExpanded(variableOid, 'method')
 															? 'bg-green-600 text-white'
-															: isMethodDeleted
-																? 'bg-red-500/10 text-red-600 line-through hover:bg-red-500/20'
-																: isMethodModified
-																	? 'border border-orange-300 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20'
-																	: 'bg-green-500/10 text-green-600 hover:bg-green-500/20'}"
-														title={isMethodDeleted
-															? 'Method deleted'
-															: isMethodModified
-																? 'Method modified'
-																: 'Click to toggle Method details'}
+															: 'bg-green-500/10 text-green-600 hover:bg-green-500/20'}"
+														title="Click to toggle Method details"
 													>
 														M
 													</button>
@@ -877,16 +476,8 @@
 														class="inline-flex rounded px-1.5 py-0.5 text-xs font-medium transition-colors
 															       {isExpanded(variableOid, 'comment')
 															? 'bg-amber-600 text-white'
-															: isCommentDeleted
-																? 'bg-red-500/10 text-red-600 line-through hover:bg-red-500/20'
-																: isCommentModified
-																	? 'border border-orange-300 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20'
-																	: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'}"
-														title={isCommentDeleted
-															? 'Comment deleted'
-															: isCommentModified
-																? 'Comment modified'
-																: 'Click to toggle Comment details'}
+															: 'bg-amber-500/10 text-amber-600 hover:bg-amber-500/20'}"
+														title="Click to toggle Comment details"
 													>
 														C
 													</button>
@@ -903,17 +494,6 @@
 												>
 													{name}
 												</button>
-
-												<!-- Status Badges -->
-												{#if isVariableAdded}
-													<Badge variant="default" class="text-xs">Added</Badge>
-												{:else if isVariableModified}
-													<Badge
-														variant="secondary"
-														class="bg-orange-100 text-xs text-orange-700 dark:bg-orange-900 dark:text-orange-300"
-														>Modified</Badge
-													>
-												{/if}
 
 												<!-- Validation Badge (click opens fixed dropdown) -->
 												{#if (validationByColumn.get(name) || []).length > 0}
@@ -938,51 +518,6 @@
 													>
 														{totalIssues}
 													</button>
-												{/if}
-
-												<!-- Warnings for deleted dependencies -->
-												{#if hasDeletedDependencies}
-													<div
-														class="flex items-center gap-1 text-xs text-red-600 dark:text-red-400"
-													>
-														<svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-															<path
-																fill-rule="evenodd"
-																d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-																clip-rule="evenodd"
-															/>
-														</svg>
-														<span>
-															{#if isCodelistDeleted}CodeList deleted{/if}
-															{#if isCommentDeleted}{isCodelistDeleted ? ', ' : ''}Comment deleted{/if}
-															{#if isMethodDeleted}{isCodelistDeleted || isCommentDeleted
-																	? ', '
-																	: ''}Method deleted{/if}
-														</span>
-													</div>
-												{/if}
-
-												<!-- Info for modified dependencies -->
-												{#if hasModifiedDependencies && !hasDeletedDependencies}
-													<div
-														class="flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400"
-													>
-														<svg class="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
-															<path
-																fill-rule="evenodd"
-																d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-																clip-rule="evenodd"
-															/>
-														</svg>
-														<span>
-															{#if isCodelistModified}CodeList modified{/if}
-															{#if isCommentModified}{isCodelistModified ? ', ' : ''}Comment
-																modified{/if}
-															{#if isMethodModified}{isCodelistModified || isCommentModified
-																	? ', '
-																	: ''}Method modified{/if}
-														</span>
-													</div>
 												{/if}
 											</div>
 										</td>
@@ -1029,7 +564,7 @@
 									{#if variable?.OID && (method || codelist || comment)}
 										<tr>
 											<td
-												colspan="9"
+												colspan="7"
 												class="p-0"
 											>
 												<div class="bg-muted/20 border-t">
@@ -1045,12 +580,7 @@
 																		onclick={(e) => {
 																			e.preventDefault();
 																			e.stopPropagation();
-																			method.OID &&
-																				drawerState.open({
-																					oid: method.OID,
-																					itemType: 'methods',
-																					defineType
-																				});
+																			method.OID && goto('/metadata/methods/' + method.OID);
 																		}}
 																		class="text-primary ml-2 hover:underline"
 																	>
@@ -1087,12 +617,7 @@
 																		onclick={(e) => {
 																			e.preventDefault();
 																			e.stopPropagation();
-																			codelist.OID &&
-																				drawerState.open({
-																					oid: codelist.OID,
-																					itemType: 'codelists',
-																					defineType
-																				});
+																			codelist.OID && goto('/metadata/codelists/' + codelist.OID);
 																		}}
 																		class="text-primary ml-2 hover:underline"
 																	>
@@ -1147,12 +672,7 @@
 																		onclick={(e) => {
 																			e.preventDefault();
 																			e.stopPropagation();
-																			comment.OID &&
-																				drawerState.open({
-																					oid: comment.OID,
-																					itemType: 'comments',
-																					defineType
-																				});
+																			comment.OID && goto('/metadata/comments/' + comment.OID);
 																		}}
 																		class="text-primary ml-2 hover:underline"
 																	>
@@ -1183,27 +703,6 @@
 				{/if}
 			</div>
 		</div>
-
-		<!-- Delete Confirmation Modal -->
-		<ConfirmDeleteModal
-			open={showDeleteModal}
-			mode={deleteModalMode}
-			itemType="Dataset"
-			itemName={editableDataset.Name || dataset.OID || ''}
-			impactedItems={[]}
-			onConfirm={confirmDeleteDataset}
-			onCancel={cancelDeleteDataset}
-		/>
-
-		<!-- Variable Picker Modal -->
-		<VariablePickerModal
-			bind:open={showVariablePicker}
-			{availableVariables}
-			excludeOIDs={existingVariableOIDs}
-			{defineType}
-			onSelect={handleSelectVariable}
-			onCancel={handleCancelVariablePicker}
-		/>
 	</div>
 {:else}
 	<!-- Generic detail view for non-dataset items -->

@@ -3,7 +3,6 @@
 	import { page } from '$app/stores';
 	import { tick } from 'svelte';
 	import type { ParsedDefineXML } from '@sden99/cdisc-types/define-xml';
-	import { metadataEditState } from '$lib/core/state/metadata';
 	import { getBasePath } from '$lib/utils/metadata/navigationHelpers';
 	import MetadataNode from './MetadataNode.svelte';
 	import MetadataCategory from './MetadataCategory.svelte';

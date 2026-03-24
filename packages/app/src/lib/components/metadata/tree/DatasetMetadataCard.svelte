@@ -28,18 +28,13 @@
 		hasData = false,
 		hasMetadata = true,
 		progress = 0,
-		// Optional edit state (prototype context)
-		editMode = false,
-		pendingChanges = {},
-		isDeleted = false,
 		// Display options
 		isSelected = false,
 		expandable = true,
 		showArchiveInfo = false,
 		// Event handlers
 		onClick = undefined,
-		onDelete = undefined,
-		onEdit = undefined
+		onDelete = undefined
 	} = $props<{
 		datasetId: string;
 		displayName: string;
@@ -50,10 +45,6 @@
 		hasData?: boolean;
 		hasMetadata?: boolean;
 		progress?: number;
-		// Edit state
-		editMode?: boolean;
-		pendingChanges?: Record<string, any>;
-		isDeleted?: boolean;
 		// Display
 		isSelected?: boolean;
 		expandable?: boolean;
@@ -61,19 +52,10 @@
 		// Events
 		onClick?: () => void;
 		onDelete?: () => void;
-		onEdit?: (field: string, value: any) => void;
 	}>();
 
 	// State info derived from runtime/edit state
 	const stateInfo = $derived.by(() => {
-		if (isDeleted) {
-			return {
-				type: 'deleted' as const,
-				tooltip: 'Marked for Deletion',
-				icon: AlertCircle,
-				iconClass: 'text-destructive'
-			};
-		}
 		if (isLoading) {
 			return {
 				type: 'loading' as const,
@@ -115,18 +97,16 @@
 	});
 
 	const Icon = $derived(stateInfo.icon);
-	const isClickable = $derived((hasData || hasMetadata) && !isLoading && !isDeleted);
+	const isClickable = $derived((hasData || hasMetadata) && !isLoading);
 
 	const containerClass = $derived(
 		`${'overflow-hidden rounded-lg transition-colors duration-150'} ${
-			isDeleted
-				? 'border-2 border-destructive bg-destructive/10 opacity-60'
-				: isSelected
-					? 'border-2 border-primary bg-primary/15 border-l-4 border-l-primary'
-					: isClickable
-						? 'border border-border hover:bg-accent hover:border-primary/50'
-						: 'border border-border'
-		} ${Object.keys(pendingChanges).length > 0 ? 'border-l-4 border-l-amber-500' : ''}`
+			isSelected
+				? 'border-2 border-primary bg-primary/15 border-l-4 border-l-primary'
+				: isClickable
+					? 'border border-border hover:bg-accent hover:border-primary/50'
+					: 'border border-border'
+		}`
 	);
 
 	const hasAdditionalMetadata = $derived(
@@ -216,13 +196,6 @@
 					</Tooltip.Root>
 				</Tooltip.Provider>
 				<span class="text-foreground truncate text-base font-medium">{displayName}</span>
-				{#if Object.keys(pendingChanges).length > 0}
-					<Badge variant="outline" class="text-amber-600 border-amber-500 text-xs">
-						{Object.keys(pendingChanges).length} change{Object.keys(pendingChanges).length > 1
-							? 's'
-							: ''}
-					</Badge>
-				{/if}
 			</div>
 
 			<!-- Actions Section -->
@@ -236,7 +209,7 @@
 					</span>
 				{/if}
 
-				{#if (hasData || editMode) && !isLoading && onDelete}
+				{#if hasData && !isLoading && onDelete}
 					<Button.Button
 						variant="ghost"
 						size="icon"

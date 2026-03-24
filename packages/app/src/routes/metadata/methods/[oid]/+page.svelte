@@ -1,22 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { extractDefineDataForMetadata } from '$lib/utils/metadata';
-	import { metadataEditState, type DefineType } from '$lib/core/state/metadata/editState.svelte';
-	import EditableText from '$lib/components/metadata/edit/EditableText.svelte';
-	import EditableTextArea from '$lib/components/metadata/edit/EditableTextArea.svelte';
-	import ConfirmDeleteModal from '$lib/components/metadata/shared/ConfirmDeleteModal.svelte';
-	import type { Method } from '@sden99/cdisc-types/define-xml';
 	import { goto } from '$app/navigation';
-
-	// Import shared utilities
-	import { mergeItemWithChanges, recordFieldChange } from '$lib/utils/metadata/useEditableItem.svelte';
-	import { isItemDeleted, handleDeleteOrReinstate } from '$lib/utils/metadata/useDeleteModal.svelte';
 
 	// Extract Define-XML data
 	const defineBundle = $derived(extractDefineDataForMetadata());
 
 	// Determine define type and get active defineData
-	const defineType = $derived<DefineType>((defineBundle.adamData ? 'adam' : 'sdtm'));
+	const defineType = $derived<'adam' | 'sdtm'>((defineBundle.adamData ? 'adam' : 'sdtm'));
 	const activeDefineData = $derived(
 		defineType === 'adam'
 			? defineBundle.adamData?.defineData
@@ -32,35 +23,6 @@
 	const method = $derived(
 		activeDefineData?.Methods?.find((m) => m.OID === $page.params.oid)
 	);
-
-	// Use shared utility for editable state
-	const editableMethod = $derived.by(() =>
-		mergeItemWithChanges(method, defineType, 'methods', method?.OID)
-	);
-
-	// Field change handlers
-	function handleFieldChange(fieldName: keyof Method, newValue: any) {
-		recordFieldChange(method, defineType, 'methods', fieldName, newValue);
-	}
-
-	// Delete modal state
-	let showDeleteModal = $state(false);
-	const isAlreadyDeleted = $derived(isItemDeleted(defineType, 'methods', method?.OID));
-	const deleteModalMode = $derived(isAlreadyDeleted ? 'reinstate' : 'delete');
-
-	// Delete action handlers
-	function handleDeleteMethod() {
-		showDeleteModal = true;
-	}
-
-	function confirmDeleteMethod() {
-		handleDeleteOrReinstate(method, defineType, 'methods', isAlreadyDeleted);
-		showDeleteModal = false;
-	}
-
-	function cancelDeleteMethod() {
-		showDeleteModal = false;
-	}
 
 	// Find variables that use this method
 	const usedByVariables = $derived.by(() => {
@@ -105,96 +67,44 @@
 				<span>Method</span>
 				<span>›</span>
 				<span>{method.OID}</span>
-				{#if isAlreadyDeleted}
-					<span class="ml-2 rounded bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
-						Deleted
-					</span>
-				{/if}
 			</div>
 			<div class="flex items-center justify-between">
 				<div class="flex-1">
-					<h1 class="mb-2 text-3xl font-bold">
-						<EditableText
-							value={editableMethod?.Name || method.OID || ''}
-							onSave={(v) => handleFieldChange('Name', v)}
-							disabled={!metadataEditState.editMode || isAlreadyDeleted}
-							placeholder="Method Name"
-						/>
-					</h1>
+					<h1 class="mb-2 text-3xl font-bold">{method.Name || method.OID || ''}</h1>
 					<div class="text-sm text-muted-foreground">
-						Type:
-						<EditableText
-							value={editableMethod?.Type || ''}
-							onSave={(v) => handleFieldChange('Type', v)}
-							disabled={!metadataEditState.editMode || isAlreadyDeleted}
-							placeholder="Method Type (e.g., Computation, Imputation)"
-							className="inline"
-						/>
+						<span>Type: {method.Type || '—'}</span>
 					</div>
 				</div>
-				{#if metadataEditState.editMode}
-					<button
-						onclick={handleDeleteMethod}
-						class="rounded px-3 py-1 text-sm transition-colors
-						       {isAlreadyDeleted
-							? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-							: 'bg-destructive text-destructive-foreground hover:bg-destructive/90'}"
-					>
-						{isAlreadyDeleted ? 'Reinstate' : 'Delete'}
-					</button>
-				{/if}
 			</div>
 		</div>
 
 		<!-- Description -->
 		<div class="mb-6 rounded-lg border bg-card p-4">
 			<h2 class="mb-2 text-lg font-semibold">Description</h2>
-			<EditableTextArea
-				value={editableMethod?.Description || ''}
-				onSave={(v) => handleFieldChange('Description', v)}
-				disabled={!metadataEditState.editMode || isAlreadyDeleted}
-				placeholder="Method description"
-				rows={5}
-			/>
+			<p class="text-sm whitespace-pre-wrap">{method.Description || '—'}</p>
 		</div>
 
 		<!-- Additional Fields (Document, Pages, TranslatedText) -->
-		{#if metadataEditState.editMode || editableMethod?.Document || editableMethod?.Pages || editableMethod?.TranslatedText}
+		{#if method.Document || method.Pages || method.TranslatedText}
 			<div class="mb-6 rounded-lg border bg-card p-4">
 				<h2 class="mb-4 text-lg font-semibold">Additional Information</h2>
 				<div class="space-y-4">
 					<!-- Document -->
 					<div>
 						<label class="mb-1 block text-sm font-medium">Document Reference</label>
-						<EditableText
-							value={editableMethod?.Document || ''}
-							onSave={(v) => handleFieldChange('Document', v)}
-							disabled={!metadataEditState.editMode || isAlreadyDeleted}
-							placeholder="Document reference (optional)"
-						/>
+						<span class="text-sm">{method.Document || '—'}</span>
 					</div>
 
 					<!-- Pages -->
 					<div>
 						<label class="mb-1 block text-sm font-medium">Pages</label>
-						<EditableText
-							value={editableMethod?.Pages || ''}
-							onSave={(v) => handleFieldChange('Pages', v)}
-							disabled={!metadataEditState.editMode || isAlreadyDeleted}
-							placeholder="Page numbers (optional)"
-						/>
+						<span class="text-sm">{method.Pages || '—'}</span>
 					</div>
 
 					<!-- TranslatedText -->
 					<div>
 						<label class="mb-1 block text-sm font-medium">Translated Text</label>
-						<EditableTextArea
-							value={editableMethod?.TranslatedText || ''}
-							onSave={(v) => handleFieldChange('TranslatedText', v)}
-							disabled={!metadataEditState.editMode || isAlreadyDeleted}
-							placeholder="Translated text (optional)"
-							rows={3}
-						/>
+						<p class="text-sm whitespace-pre-wrap">{method.TranslatedText || '—'}</p>
 					</div>
 				</div>
 			</div>
@@ -234,22 +144,6 @@
 			</div>
 		</div>
 	</div>
-
-	<!-- Delete Confirmation Modal -->
-	{#if showDeleteModal}
-		<ConfirmDeleteModal
-			open={showDeleteModal}
-			itemName={method.Name || method.OID || 'this method'}
-			itemType="method"
-			mode={deleteModalMode}
-			impactedItems={usedByVariables.map((item) => ({
-				name: item.displayName,
-				type: 'variable'
-			}))}
-			onConfirm={confirmDeleteMethod}
-			onCancel={cancelDeleteMethod}
-		/>
-	{/if}
 {:else}
 	<div class="mx-auto max-w-2xl p-8 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Method Not Found</h1>

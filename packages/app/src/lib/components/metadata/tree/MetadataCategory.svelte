@@ -11,9 +11,10 @@
 <script lang="ts">
 	import MetadataNode from './MetadataNode.svelte';
 	import DatasetMetadataCard from './DatasetMetadataCard.svelte';
-	import { metadataEditState, type ItemType } from '$lib/core/state/metadata';
 	import * as dataState from '$lib/core/state/dataState.svelte';
 	import type { ParsedDefineXML } from '@sden99/cdisc-types/define-xml';
+
+	type ItemType = 'codelists' | 'variables' | 'datasets' | 'methods' | 'comments' | 'valuelists' | 'whereclauses' | 'standards' | 'dictionaries' | 'documents' | 'analysisresults';
 
 	// Type definitions
 	type DefineType = 'adam' | 'sdtm';
@@ -106,10 +107,7 @@
 			filterState.connectedNodes,
 			filterState.matchingOids
 		)}
-		{@const change = itemId ? metadataEditState.getChange(defineType, categoryName, itemId) : null}
-		{@const isDeleted = change?.type === 'DELETED'}
-		{@const isModified = change && !isDeleted}
-		{@const displayName = change?.changes?.Name || item.Name || item.Display || itemId || 'Unknown'}
+		{@const displayName = item.Name || item.Display || itemId || 'Unknown'}
 		{@const sublabel = getSublabel ? getSublabel(item) : ''}
 
 		{#if visible}
@@ -121,9 +119,6 @@
 						datasetId={itemId || ''}
 						displayName={displayName}
 						metadata={item}
-						editMode={metadataEditState.editMode}
-						pendingChanges={change?.changes || {}}
-						isDeleted={isDeleted}
 						hasMetadata={true}
 						{hasData}
 						isSelected={itemId ? utils.isItemSelected(categoryName, itemId, currentPath) : false}
@@ -145,8 +140,6 @@
 					isSelected={itemId ? utils.isItemSelected(categoryName, itemId, currentPath) : false}
 					onClick={() => itemId && onNavigate(categoryName, itemId)}
 					leafId={itemId}
-					isModified={!!isModified}
-					{isDeleted}
 				/>
 			{/if}
 		{/if}

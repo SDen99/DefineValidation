@@ -1,9 +1,7 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { Badge } from '@sden99/ui-components';
 	import FileUpload from '$lib/components/data/shared/FileUpload.svelte';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
-	import { metadataEditState } from '$lib/core/state/metadata/editState.svelte';
 	import ViewSwitcher from './ViewSwitcher.svelte';
 	import StorageBadge from './StorageBadge.svelte';
 
@@ -14,13 +12,10 @@
 	}
 
 	let { handleFileChangeEvent, isLoading, accept }: Props = $props();
-
-	const isMetadataRoute = $derived($page.url.pathname.startsWith('/metadata'));
-
 </script>
 
 <header
-	class="bg-muted/30 supports-[backdrop-filter]:bg-muted/30 dark:bg-background/95 dark:supports-[backdrop-filter]:bg-background/95 dark:border-border sticky top-0 z-50 w-full border-b backdrop-blur {metadataEditState.editMode && isMetadataRoute ? 'border-b-2 border-b-warning' : ''}"
+	class="bg-muted/30 supports-[backdrop-filter]:bg-muted/30 dark:bg-background/95 dark:supports-[backdrop-filter]:bg-background/95 dark:border-border sticky top-0 z-50 w-full border-b backdrop-blur"
 >
 	<div class="container flex h-14 max-w-none px-6">
 		<div class="flex w-full items-center justify-between">
@@ -44,17 +39,6 @@
 
 			<!-- Right side content -->
 			<div class="text-foreground flex items-center gap-4">
-				{#if isMetadataRoute}
-					<button
-						onclick={() => metadataEditState.toggleEditMode()}
-						class="rounded-lg px-3 py-1 text-sm font-medium transition-colors
-						       {metadataEditState.editMode
-							? 'bg-warning text-warning-foreground hover:bg-warning/90'
-							: 'bg-muted text-muted-foreground hover:bg-muted/80'}"
-					>
-						{metadataEditState.editMode ? '✓ Editing' : 'Edit Mode'}
-					</button>
-				{/if}
 				<StorageBadge />
 				<ViewSwitcher />
 				<ThemeToggle />

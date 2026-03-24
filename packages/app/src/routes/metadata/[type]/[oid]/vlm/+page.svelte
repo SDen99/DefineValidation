@@ -3,9 +3,6 @@
 	import { goto } from '$app/navigation';
 	import { extractDefineDataForMetadata } from '$lib/utils/metadata';
 	import VLMTablePrototype from '$lib/components/metadata/VLMTablePrototype.svelte';
-	import { metadataEditState, type DefineType } from '$lib/core/state/metadata/editState.svelte';
-	import { mergeItemWithChanges, hasItemChanges } from '$lib/utils/metadata/useEditableItem.svelte';
-	import { isItemDeleted } from '$lib/utils/metadata/useDeleteModal.svelte';
 	import { transformVLMForEditing } from '$lib/utils/metadata/vlmTableTransform';
 	import type { VLMViewMode } from '@sden99/vlm-processing';
 	import DatasetNavigationTabs from '$lib/components/navigation/DatasetNavigationTabs.svelte';
@@ -83,15 +80,7 @@
 	});
 
 	// Determine define type (adam or sdtm)
-	const defineType = $derived<DefineType>((defineBundle.adamData ? 'adam' : 'sdtm'));
-
-	// Editable dataset with merged changes
-	const editableDataset = $derived.by(() =>
-		dataset ? mergeItemWithChanges(dataset, defineType, 'datasets', dataset.OID) : null
-	);
-
-	// Check if deleted
-	const isAlreadyDeleted = $derived(isItemDeleted(defineType, 'datasets', dataset?.OID));
+	const defineType = $derived<'adam' | 'sdtm'>((defineBundle.adamData ? 'adam' : 'sdtm'));
 
 	// Navigation helpers
 	function navigateToMethod(oid: string) {
@@ -133,7 +122,7 @@
 	const hasVLM = $derived(!!vlmTableData && vlmTableData.rows.length > 0);
 </script>
 
-{#if !dataset || !editableDataset}
+{#if !dataset}
 	<div class="mx-auto max-w-2xl p-8 text-center">
 		<h1 class="mb-4 text-2xl font-bold">Dataset Not Found</h1>
 		<p class="text-muted-foreground">
@@ -159,18 +148,15 @@
 				<div class="flex items-center gap-2 text-sm text-muted-foreground">
 					<span>Dataset</span>
 					<span>›</span>
-					<span>{editableDataset.Name || dataset.OID}</span>
+					<span>{dataset.Name || dataset.OID}</span>
 					<span>›</span>
 					<span>VLM</span>
-					{#if hasItemChanges(defineType, 'datasets', dataset.OID)}
-						<span class="rounded-full bg-warning px-2 py-0.5 text-xs text-warning-foreground">Modified</span>
-					{/if}
 				</div>
 			</div>
 
-			<h1 class="text-2xl font-bold">{editableDataset.Name || dataset.OID}</h1>
-			{#if editableDataset.Description}
-				<p class="mt-1 text-sm text-muted-foreground">{editableDataset.Description}</p>
+			<h1 class="text-2xl font-bold">{dataset.Name || dataset.OID}</h1>
+			{#if dataset.Description}
+				<p class="mt-1 text-sm text-muted-foreground">{dataset.Description}</p>
 			{/if}
 		</div>
 
@@ -228,7 +214,6 @@
 					vlmData={vlmTableData}
 					defineData={defineType === 'adam' ? defineBundle.adamData?.defineData : defineBundle.sdtmData?.defineData}
 					{defineType}
-					editMode={metadataEditState.editMode && !isAlreadyDeleted}
 					groupByParameter={viewMode === 'compact'}
 					onNavigateToMethod={navigateToMethod}
 					onNavigateToCodeList={navigateToCodeList}

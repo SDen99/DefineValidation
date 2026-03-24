@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { extractDefineDataForMetadata } from '$lib/utils/metadata';
-	import { type DefineType } from '$lib/core/state/metadata/editState.svelte';
 	import { goto } from '$app/navigation';
 
 	// Extract Define-XML data
 	const defineBundle = $derived(extractDefineDataForMetadata());
 
 	// Determine define type and get active defineData
-	const defineType = $derived<DefineType>((defineBundle.adamData ? 'adam' : 'sdtm'));
+	const defineType = $derived<'adam' | 'sdtm'>((defineBundle.adamData ? 'adam' : 'sdtm'));
 	const activeDefineData = $derived(
 		defineType === 'adam'
 			? defineBundle.adamData?.defineData

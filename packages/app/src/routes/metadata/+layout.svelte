@@ -4,15 +4,12 @@
 	import MetadataExplorer from '$lib/components/metadata/MetadataExplorer.svelte';
 	import DataXmlList from '$lib/components/data/DataXmlList.svelte';
 	import Footer from '$lib/components/Footer.svelte';
-	import EditHistorySidebarNew from '$lib/components/metadata/edit/EditHistorySidebarNew.svelte';
-	import EditDrawer from '$lib/components/metadata/edit/EditDrawer.svelte';
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sden99/ui-components';
 	import { goto } from '$app/navigation';
 	import { browser } from '$app/environment';
 	import { extractDefineDataForMetadata } from '$lib/utils/metadata';
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
 	import * as appState from '$lib/core/state/appState.svelte.ts';
-	import { metadataEditState } from '$lib/core/state/metadata/editState.svelte';
 	import { FileUploadController } from '$lib/core/controllers/FileUploadController.svelte.ts';
 	import { validationService } from '$lib/services/validationService.svelte';
 
@@ -153,11 +150,3 @@
 {/snippet}
 
 <MainLayout {navigation} {leftbar} {mainContent} {rightbar} {footer} />
-
-<!-- Edit History Sidebar (only show when edit mode is active) -->
-{#if metadataEditState.editMode}
-	<EditHistorySidebarNew />
-{/if}
-
-<!-- Edit Drawer (bottom drawer for inline editing) -->
-<EditDrawer />
