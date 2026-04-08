@@ -2,7 +2,6 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { ClinicalDataTableV3, type SerializedFilter, type SortConfig, type ColumnValidationInfo, type ValidationCheckDetail } from '@sden99/data-table-v3';
-	import DatasetNavigationTabs from '$lib/components/navigation/DatasetNavigationTabs.svelte';
 	import { getContext } from 'svelte';
 
 	// State management
@@ -229,11 +228,6 @@
 		{#if displayDescription}
 			<p class="mt-1 text-sm text-muted-foreground">{displayDescription}</p>
 		{/if}
-	</div>
-
-	<!-- Navigation Tabs (routes between /datasets and /metadata) -->
-	<div class="mb-2">
-		<DatasetNavigationTabs datasetName={selectedName || datasetId} currentView="dataset" />
 	</div>
 
 	<!-- Dataset Content -->

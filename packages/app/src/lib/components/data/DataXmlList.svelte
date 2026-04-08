@@ -5,13 +5,10 @@
 	import DatasetCardItem from './DatasetCardItem.svelte';
 	import ConfirmationDialog from '$lib/components/shared/ConfirmationDialog.svelte';
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
-	import * as appState from '$lib/core/state/appState.svelte.ts';
 	import type { ItemGroup } from '@sden99/cdisc-types';
 	import { ScrollArea } from '@sden99/ui-components';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import { findDatasetOID, findDatasetOIDWithType } from '$lib/utils/datasetOIDLookup';
-	import { normalizeDatasetId } from '@sden99/dataset-domain';
+	import { findDatasetOIDWithType } from '$lib/utils/datasetOIDLookup';
 	import { validationService } from '$lib/services/validationService.svelte';
 
 	// --- LOCAL COMPONENT STATE ---
@@ -109,62 +106,7 @@
 
 	function handleDatasetClick(datasetId: string) {
 		if (isDeleting) return;
-
-		// Step 1: Check if this dataset has Define-XML metadata
-		const oid = findDatasetOID(datasetId);
-		const hasMetadata = !!oid;
-
-		// Step 2: Check if this dataset has actual data file
-		const datasets = dataState.getDatasets();
-		const normalized = normalizeDatasetId(datasetId);
-		const hasDataFile = !!Object.keys(datasets).find(
-			(key) => normalizeDatasetId(key) === normalized
-		);
-
-		// Step 3: Check for remembered tab preference (previous session)
-		const datasetKey = `${datasetId}_`;
-		const rememberedTab = appState.getRememberedTabForDataset(datasetKey);
-
-		// Step 4: Determine target route
-		let targetUrl: string;
-
-		if (rememberedTab) {
-			// Use remembered preference
-			if (rememberedTab === 'metadata' && hasMetadata) {
-				targetUrl = `/metadata/datasets/${oid}`;
-			} else if (rememberedTab === 'VLM' && hasMetadata) {
-				targetUrl = `/metadata/datasets/${oid}?tab=vlm`;
-			} else if (rememberedTab === 'data' && hasDataFile) {
-				targetUrl = `/datasets/${encodeURIComponent(datasetId)}`;
-			} else {
-				// Remembered tab not available, fall through to default
-				targetUrl = determineDefaultRoute();
-			}
-		} else {
-			// No remembered preference, use default logic
-			targetUrl = determineDefaultRoute();
-		}
-
-		function determineDefaultRoute(): string {
-			// Priority: metadata > dataset > nothing
-			if (hasMetadata) {
-				return `/metadata/datasets/${oid}`;
-			} else if (hasDataFile) {
-				return `/datasets/${encodeURIComponent(datasetId)}`;
-			}
-			// Fallback (shouldn't happen)
-			return `/datasets/${encodeURIComponent(datasetId)}`;
-		}
-
-		console.log('[DataXmlList] Navigating to dataset:', {
-			datasetId,
-			hasMetadata,
-			hasDataFile,
-			rememberedTab,
-			targetUrl
-		});
-
-		goto(targetUrl);
+		goto(`/datasets/${encodeURIComponent(datasetId)}`);
 	}
 </script>
 
