@@ -4,15 +4,6 @@ import {
 	initializeApplication,
 	type InitialAppState
 } from '$lib/core/services/InitializationService.ts';
-import { dev } from '$app/environment';
-
-// Vercel analytics injection (conditional — fails gracefully outside Vercel)
-if (browser) {
-	import('@vercel/analytics/sveltekit')
-		.then(({ injectAnalytics }) => injectAnalytics({ mode: dev ? 'development' : 'production' }))
-		.catch(() => {});
-}
-
 export const ssr = false; // We need client-side APIs for storage
 
 /**
