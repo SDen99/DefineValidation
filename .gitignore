@@ -5,6 +5,7 @@
 !build/
 !build/**
 !app.sh
+!server.js
 !package.json
 !.nvmrc
 !.gitignore
