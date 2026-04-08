@@ -9,7 +9,7 @@ const config = {
     kit: {
         adapter: adapter({ precompress: true }),
         paths: {
-            base: process.env.BASE_PATH || ''
+            base: '/modelproducts/69d693c153739a52ce0179c4'
         }
     },
 
