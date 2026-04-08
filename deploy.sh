@@ -48,6 +48,7 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 cp -r "$BUILD_DIR" "$TMPDIR/build"
 cp "$REPO_ROOT/app.sh" "$TMPDIR/app.sh"
+cp "$REPO_ROOT/server.js" "$TMPDIR/server.js"
 
 # Minimal package.json for deploy branch
 cat > "$TMPDIR/package.json" <<'PKGJSON'
@@ -71,6 +72,7 @@ cat > "$TMPDIR/.gitignore" <<'GITIGNORE'
 !build/
 !build/**
 !app.sh
+!server.js
 !package.json
 !.nvmrc
 !.gitignore
@@ -93,12 +95,13 @@ fi
 # --- Copy artifacts in ---
 cp -r "$TMPDIR/build" .
 cp "$TMPDIR/app.sh" .
+cp "$TMPDIR/server.js" .
 cp "$TMPDIR/package.json" .
 cp "$TMPDIR/.nvmrc" .
 cp "$TMPDIR/.gitignore" .
 
 # --- Commit only deploy artifacts ---
-git add build/ app.sh package.json .nvmrc .gitignore
+git add build/ app.sh server.js package.json .nvmrc .gitignore
 git commit -m "Deploy $COMMIT_SHA — $TIMESTAMP"
 
 echo "==> Deploy branch updated (from main $COMMIT_SHA)"
