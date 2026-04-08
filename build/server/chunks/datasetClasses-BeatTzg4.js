@@ -1,4 +1,0 @@
-const a=[{value:"Basic Data Structure",abbrev:"BDS",standard:"ADaM"},{value:"Occurrence Data Structure",abbrev:"OCCUR",standard:"ADaM"},{value:"Subject Level Analysis Dataset",abbrev:"SLAD",standard:"ADaM"},{value:"Adam Other",abbrev:"OTHER",standard:"ADaM"},{value:"Events",abbrev:"EVT",standard:"SDTM"},{value:"Interventions",abbrev:"INT",standard:"SDTM"},{value:"Findings",abbrev:"FIND",standard:"SDTM"},{value:"Findings About",abbrev:"FA",standard:"SDTM"},{value:"Special Purpose",abbrev:"SP",standard:"SDTM"},{value:"Trial Design",abbrev:"TD",standard:"SDTM"},{value:"Relationship",abbrev:"REL",standard:"SDTM"},{value:"Associated Persons",abbrev:"AP",standard:"SDTM"},{value:"Device",abbrev:"DEV",standard:"SDTM"}],e=new Map;for(const t of a)e.set(t.value.toUpperCase(),t.abbrev);function r(a){return a?e.get(a.toUpperCase())||a:""}
-
-export { r };
-//# sourceMappingURL=datasetClasses-BeatTzg4.js.map

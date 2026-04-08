@@ -1,0 +1,1 @@
+.keyboard-focused{background-color:hsl(var(--primary) / .2)!important;border-left:4px solid hsl(var(--primary))!important;padding-left:calc(.5rem - 4px)!important}body{overflow:hidden}
