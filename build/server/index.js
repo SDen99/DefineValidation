@@ -1,2 +1,2 @@
-export { a5 as Server } from './chunks/error.svelte-CBX3NTEw.js';
+export { a5 as Server } from './chunks/error.svelte-QBsbShO3.js';
 //# sourceMappingURL=index.js.map
