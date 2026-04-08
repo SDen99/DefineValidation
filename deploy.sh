@@ -29,8 +29,11 @@ fi
 COMMIT_SHA=$(git rev-parse --short HEAD)
 TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
+# --- Domino base path ---
+export BASE_PATH="/modelproducts/69d693c153739a52ce0179c4"
+
 # --- Build ---
-echo "==> Building on main ($COMMIT_SHA)..."
+echo "==> Building on main ($COMMIT_SHA) with BASE_PATH=$BASE_PATH..."
 pnpm run build
 
 BUILD_DIR="$REPO_ROOT/packages/app/build"
