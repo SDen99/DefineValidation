@@ -73,9 +73,6 @@ else
   git rm -rf . > /dev/null 2>&1 || true
 fi
 
-# --- Remove all untracked files left over from main ---
-git clean -fdx > /dev/null 2>&1
-
 # --- Copy artifacts in ---
 cp -r "$TMPDIR/build" .
 cp "$TMPDIR/app.sh" .
