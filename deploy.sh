@@ -73,14 +73,17 @@ else
   git rm -rf . > /dev/null 2>&1 || true
 fi
 
+# --- Remove all untracked files left over from main ---
+git clean -fdx > /dev/null 2>&1
+
 # --- Copy artifacts in ---
 cp -r "$TMPDIR/build" .
 cp "$TMPDIR/app.sh" .
 cp "$TMPDIR/package.json" .
 cp "$TMPDIR/.nvmrc" .
 
-# --- Commit ---
-git add -A
+# --- Commit only deploy artifacts ---
+git add build/ app.sh package.json .nvmrc
 git commit -m "Deploy $COMMIT_SHA — $TIMESTAMP"
 
 echo "==> Deploy branch updated (from main $COMMIT_SHA)"
