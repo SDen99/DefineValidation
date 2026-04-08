@@ -59,6 +59,20 @@ PKGJSON
 # .nvmrc pinned to Node 18 for Domino runtime
 echo "18.16.0" > "$TMPDIR/.nvmrc"
 
+# .gitignore — ignore everything except deploy artifacts
+cat > "$TMPDIR/.gitignore" <<'GITIGNORE'
+# Ignore everything
+*
+
+# Except deploy artifacts
+!build/
+!build/**
+!app.sh
+!package.json
+!.nvmrc
+!.gitignore
+GITIGNORE
+
 # --- Switch to deploy branch ---
 echo "==> Switching to deploy branch..."
 DEPLOY_EXISTS=$(git branch --list deploy)
@@ -78,9 +92,10 @@ cp -r "$TMPDIR/build" .
 cp "$TMPDIR/app.sh" .
 cp "$TMPDIR/package.json" .
 cp "$TMPDIR/.nvmrc" .
+cp "$TMPDIR/.gitignore" .
 
 # --- Commit only deploy artifacts ---
-git add build/ app.sh package.json .nvmrc
+git add build/ app.sh package.json .nvmrc .gitignore
 git commit -m "Deploy $COMMIT_SHA — $TIMESTAMP"
 
 echo "==> Deploy branch updated (from main $COMMIT_SHA)"
