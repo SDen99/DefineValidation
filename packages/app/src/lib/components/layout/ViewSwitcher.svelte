@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import { Table, ShieldCheck, ChevronDown } from '@lucide/svelte/icons';
 	import {
 		DropdownMenu,
@@ -16,6 +17,10 @@
 	const currentView = $derived(
 		views.find((v) => $page.url.pathname.startsWith(v.href)) ?? views[0]
 	);
+
+	function navigateTo(href: string) {
+		goto(href);
+	}
 </script>
 
 <DropdownMenu>
@@ -31,10 +36,10 @@
 	<DropdownMenuContent align="start">
 		{#each views as view (view.href)}
 			<DropdownMenuItem class={currentView.href === view.href ? 'bg-accent' : ''}>
-				<a href={view.href} class="flex w-full items-center gap-2">
+				<button onclick={() => navigateTo(view.href)} class="flex w-full items-center gap-2">
 					<view.icon class="h-4 w-4" />
 					{view.label}
-				</a>
+				</button>
 			</DropdownMenuItem>
 		{/each}
 	</DropdownMenuContent>

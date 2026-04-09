@@ -4,27 +4,32 @@ import { normalizeDatasetId as normalize } from '@sden99/dataset-domain';
 import { startMetric, endMetric, startSession, endSession } from '$lib/utils/performanceMetrics.svelte';
 
 /**
- * Finds the source file and domain for a given normalized name.
- * This is the new, performant lookup function.
+ * Finds the source file and domain for a given name.
+ * Always normalizes the input first so data files are found before
+ * falling through to Define-XML lookup (which returns the XML file, not data).
  */
-function findSource(normalizedName: string): { fileId: string; domain: string } | null {
-	// First, check for a direct file match (e.g., a .sas7bdat file)
-	const originalFilename = dataState.getOriginalFilename(normalizedName);
+function findSource(name: string): { fileId: string; domain: string } | null {
+	const normalizedName = normalize(name);
 	const allDatasets = dataState.getDatasets();
 
+	// First, check for a direct data file match via the originalFilenames map
+	// (normalized key → original filename like "adpc.sas7bdat")
+	const originalFilename = dataState.getOriginalFilename(normalizedName);
 	if (originalFilename && allDatasets[originalFilename]) {
 		return { fileId: originalFilename, domain: normalizedName };
 	}
 
-	// Also check if the normalized name itself exists as a dataset key
+	// Also check if the raw name or normalized name exists as a dataset key
+	if (allDatasets[name]) {
+		return { fileId: name, domain: normalizedName };
+	}
 	if (allDatasets[normalizedName]) {
 		return { fileId: normalizedName, domain: normalizedName };
 	}
 
-	// If not a direct file, it must be a domain from a Define.xml file.
+	// No data file found — check Define-XML for metadata-only domains
 	const { SDTM, ADaM, sdtmId, adamId } = dataState.getDefineXmlInfo();
 
-	// Check ADaM first - find original case name
 	const adamGroup = ADaM?.ItemGroups.find(
 		(g) => normalize(g.SASDatasetName || g.Name) === normalizedName
 	);
@@ -37,7 +42,6 @@ function findSource(normalizedName: string): { fileId: string; domain: string } 
 		return { fileId: adamId, domain: originalName };
 	}
 
-	// Check SDTM next - find original case name
 	const sdtmGroup = SDTM?.ItemGroups.find(
 		(g) => normalize(g.SASDatasetName || g.Name) === normalizedName
 	);
@@ -50,7 +54,6 @@ function findSource(normalizedName: string): { fileId: string; domain: string } 
 		return { fileId: sdtmId, domain: originalName };
 	}
 
-	// Not found anywhere
 	return null;
 }
 
@@ -76,13 +79,7 @@ export function selectDataset(datasetName: string | null) {
 
 	// Track dataset lookup time
 	startMetric('find-source', 'selection', { datasetName });
-	let source = findSource(datasetName);
-	if (!source) {
-		const normalized = normalize(datasetName);
-		if (normalized !== datasetName) {
-			source = findSource(normalized);
-		}
-	}
+	const source = findSource(datasetName);
 	endMetric('find-source', 'selection', { found: !!source });
 
 	if (source) {
