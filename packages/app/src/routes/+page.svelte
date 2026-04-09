@@ -10,9 +10,13 @@
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sden99/ui-components';
 	import EnhancedVariableList from '$lib/components/data/EnhancedVariableList.svelte';
 
+	// Rules view components
+	import RulesPage from '$lib/components/rules/RulesPage.svelte';
+
 	// CONTROLLERS & STATE
 	import { FileUploadController } from '$lib/core/controllers/FileUploadController.svelte.ts';
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
+	import * as appState from '$lib/core/state/appState.svelte.ts';
 
 	import { validationService } from '$lib/services/validationService.svelte';
 
@@ -31,22 +35,6 @@
 
 	// Derived state for UI
 	let isLoading = $derived(uploadController?.isLoading ?? false);
-	let isReady = $derived(uploadController?.isReady ?? false);
-
-	let rightSidebarProps = $derived.by(() => {
-		const selectedId = dataState.selectedDatasetId.value;
-		if (!selectedId) return null;
-		const dataset = dataState.getDatasets()[selectedId];
-		if (!dataset?.data || !Array.isArray(dataset.data) || !dataset.details?.columns) {
-			return null;
-		}
-		return {
-			variables: dataset.details.columns.map((col: string) => ({
-				name: col,
-				dtype: dataset.details.dtypes?.[col] ?? ''
-			}))
-		};
-	});
 
 	// Auto-persist state when data changes
 	$effect(() => {
@@ -76,6 +64,9 @@
 			document.removeEventListener('load-sample', handleLoadSample);
 		};
 	});
+
+	// Top-level view state
+	let currentAppView = $derived(appState.appView.value);
 </script>
 
 <!-- FIX: Add the hidden file input that the splash screen's label will trigger -->
@@ -89,53 +80,57 @@
 />
 
 {#if browser}
-	{#snippet navigation()}
-		<Navigation {handleFileChangeEvent} {isLoading} />
-	{/snippet}
+	{#if currentAppView === 'rules'}
+		<!-- Rules view — rendered inline (no URL navigation needed) -->
+		<RulesPage {data} />
+	{:else}
+		{#snippet navigation()}
+			<Navigation {handleFileChangeEvent} {isLoading} />
+		{/snippet}
 
-	{#snippet leftbar()}
-		<DataXmlList />
-	{/snippet}
+		{#snippet leftbar()}
+			<DataXmlList />
+		{/snippet}
 
-	{#snippet mainContent()}
-		<div class="h-full">
-			{#if dataState.selectedDatasetId.value}
-				<DatasetViewTabs bind:clinicalTableRef />
-			{:else}
-				<div class="text-muted-foreground flex h-full items-center justify-center">
-					<p>Select a dataset to view</p>
-				</div>
-			{/if}
-		</div>
-	{/snippet}
-
-	{#snippet rightbar()}
-		<div class="h-full">
-			{#if dataState.selectedDatasetId.value}
-				<Tabs value="variables" class="flex h-full flex-col">
-					<TabsList class="flex-shrink-0">
-						<TabsTrigger value="variables">Variables</TabsTrigger>
-					</TabsList>
-					<div class="flex-grow overflow-auto">
-						<TabsContent value="variables">
-							<!-- Enhanced Variables with column management and drag-drop -->
-							<div class="p-4">
-								<EnhancedVariableList bind:clinicalTableRef />
-							</div>
-						</TabsContent>
+		{#snippet mainContent()}
+			<div class="h-full">
+				{#if dataState.selectedDatasetId.value}
+					<DatasetViewTabs bind:clinicalTableRef />
+				{:else}
+					<div class="text-muted-foreground flex h-full items-center justify-center">
+						<p>Select a dataset to view</p>
 					</div>
-				</Tabs>
-			{:else}
-				<div class="p-4 text-center text-gray-500">
-					<p>Select a dataset to view variables</p>
-				</div>
-			{/if}
-		</div>
-	{/snippet}
+				{/if}
+			</div>
+		{/snippet}
 
-	{#snippet footer()}
-		<Footer />
-	{/snippet}
+		{#snippet rightbar()}
+			<div class="h-full">
+				{#if dataState.selectedDatasetId.value}
+					<Tabs value="variables" class="flex h-full flex-col">
+						<TabsList class="flex-shrink-0">
+							<TabsTrigger value="variables">Variables</TabsTrigger>
+						</TabsList>
+						<div class="flex-grow overflow-auto">
+							<TabsContent value="variables">
+								<div class="p-4">
+									<EnhancedVariableList bind:clinicalTableRef />
+								</div>
+							</TabsContent>
+						</div>
+					</Tabs>
+				{:else}
+					<div class="p-4 text-center text-gray-500">
+						<p>Select a dataset to view variables</p>
+					</div>
+				{/if}
+			</div>
+		{/snippet}
 
-	<MainLayout {navigation} {leftbar} {mainContent} {rightbar} {footer} />
+		{#snippet footer()}
+			<Footer />
+		{/snippet}
+
+		<MainLayout {navigation} {leftbar} {mainContent} {rightbar} {footer} />
+	{/if}
 {/if}

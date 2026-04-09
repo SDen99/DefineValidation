@@ -38,6 +38,9 @@ export const rightSidebarWidth = $state<{ value: number }>({ value: 320 });
 export const editHistorySidebarOpen = $state<{ value: boolean }>({ value: true }); // Edit History expanded by default
 export const editHistorySidebarWidth = $state<{ value: number }>({ value: 288 }); // 18rem default
 
+// Top-level app view (state-based navigation for Domino iframe compatibility)
+export const appView = $state<{ value: 'datasets' | 'rules' }>({ value: 'datasets' });
+
 // View Mode State
 export const viewMode = $state<{ value: 'data' | 'metadata' | 'VLM' }>({ value: 'data' });
 export const metadataViewMode = $state<{ value: 'table' | 'card' }>({ value: 'table' });

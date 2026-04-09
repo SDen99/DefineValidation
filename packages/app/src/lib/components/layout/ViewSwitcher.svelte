@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import * as appState from '$lib/core/state/appState.svelte.ts';
 	import { Table, ShieldCheck, ChevronDown } from '@lucide/svelte/icons';
 	import {
 		DropdownMenu,
@@ -10,17 +9,13 @@
 	} from '$lib/components/core/dropdown-menu';
 
 	const views = [
-		{ label: 'Datasets', href: '/datasets', icon: Table },
-		{ label: 'Checks', href: '/rules', icon: ShieldCheck }
-	] as const;
+		{ label: 'Datasets', key: 'datasets' as const, icon: Table },
+		{ label: 'Checks', key: 'rules' as const, icon: ShieldCheck }
+	];
 
 	const currentView = $derived(
-		views.find((v) => $page.url.pathname.startsWith(v.href)) ?? views[0]
+		views.find((v) => v.key === appState.appView.value) ?? views[0]
 	);
-
-	function navigateTo(href: string) {
-		goto(href);
-	}
 </script>
 
 <DropdownMenu>
@@ -34,9 +29,9 @@
 		</button>
 	</DropdownMenuTrigger>
 	<DropdownMenuContent align="start">
-		{#each views as view (view.href)}
-			<DropdownMenuItem class={currentView.href === view.href ? 'bg-accent' : ''}>
-				<button onclick={() => navigateTo(view.href)} class="flex w-full items-center gap-2">
+		{#each views as view (view.key)}
+			<DropdownMenuItem class={currentView.key === view.key ? 'bg-accent' : ''}>
+				<button onclick={() => (appState.appView.value = view.key)} class="flex w-full items-center gap-2">
 					<view.icon class="h-4 w-4" />
 					{view.label}
 				</button>

@@ -34,6 +34,16 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 		return { fileId: normalizedName, domain: normalizedName };
 	}
 
+	// Fallback: scan all dataset keys and match by normalized form
+	// Catches .xpt/.sas7bdat files even if originalFilenames map wasn't populated
+	const matchingKey = datasetKeys.find(
+		(key) => normalize(key) === normalizedName && key !== 'define.xml'
+	);
+	if (matchingKey) {
+		console.warn(`[findSource] MATCH via key scan: fileId='${matchingKey}', domain='${normalizedName}'`);
+		return { fileId: matchingKey, domain: normalizedName };
+	}
+
 	console.warn(`[findSource] No data file found, checking Define-XML...`);
 	// No data file found — check Define-XML for metadata-only domains
 	const { SDTM, ADaM, sdtmId, adamId } = dataState.getDefineXmlInfo();

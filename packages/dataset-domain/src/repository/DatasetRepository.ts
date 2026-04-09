@@ -81,7 +81,7 @@ export class PlainDatasetRepository implements DatasetRepository {
   }
 
   private normalizeId(id: string): string {
-    return id.replace(/\.(sas7bdat|xml)$/i, '').toLowerCase();
+    return id.replace(/\.(sas7bdat|xpt|xml|json)$/i, '').toLowerCase();
   }
 
   // Helper methods for external access

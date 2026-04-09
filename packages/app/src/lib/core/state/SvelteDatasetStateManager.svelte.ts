@@ -93,7 +93,7 @@ export class SvelteDatasetRepository implements DatasetRepository {
 	}
 
 	private normalizeId(id: string): string {
-		return id.replace(/\.(sas7bdat|xml)$/i, '').toLowerCase();
+		return id.replace(/\.(sas7bdat|xpt|xml|json)$/i, '').toLowerCase();
 	}
 }
 
@@ -433,6 +433,6 @@ export class SvelteDatasetStateManager {
 	}
 
 	private normalizeId(id: string): string {
-		return id.replace(/\.(sas7bdat|xml)$/i, '').toLowerCase();
+		return id.replace(/\.(sas7bdat|xpt|xml|json)$/i, '').toLowerCase();
 	}
 }
