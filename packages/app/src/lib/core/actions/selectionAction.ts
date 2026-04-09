@@ -11,22 +11,30 @@ import { startMetric, endMetric, startSession, endSession } from '$lib/utils/per
 function findSource(name: string): { fileId: string; domain: string } | null {
 	const normalizedName = normalize(name);
 	const allDatasets = dataState.getDatasets();
+	const datasetKeys = Object.keys(allDatasets);
+
+	console.warn(`[findSource] input='${name}', normalized='${normalizedName}', datasetKeys=`, datasetKeys);
 
 	// First, check for a direct data file match via the originalFilenames map
 	// (normalized key → original filename like "adpc.sas7bdat")
 	const originalFilename = dataState.getOriginalFilename(normalizedName);
+	console.warn(`[findSource] getOriginalFilename('${normalizedName}') =`, originalFilename);
 	if (originalFilename && allDatasets[originalFilename]) {
+		console.warn(`[findSource] MATCH via originalFilename: fileId='${originalFilename}', domain='${normalizedName}'`);
 		return { fileId: originalFilename, domain: normalizedName };
 	}
 
 	// Also check if the raw name or normalized name exists as a dataset key
 	if (allDatasets[name]) {
+		console.warn(`[findSource] MATCH via raw key: fileId='${name}'`);
 		return { fileId: name, domain: normalizedName };
 	}
 	if (allDatasets[normalizedName]) {
+		console.warn(`[findSource] MATCH via normalized key: fileId='${normalizedName}'`);
 		return { fileId: normalizedName, domain: normalizedName };
 	}
 
+	console.warn(`[findSource] No data file found, checking Define-XML...`);
 	// No data file found — check Define-XML for metadata-only domains
 	const { SDTM, ADaM, sdtmId, adamId } = dataState.getDefineXmlInfo();
 
@@ -68,7 +76,7 @@ export function selectDataset(datasetName: string | null) {
 	startSession(sessionId);
 	startMetric('total-selection', 'selection', { datasetName });
 
-	console.log(`[SelectionAction] Started for: '${datasetName}'`);
+	console.warn(`[SelectionAction] selectDataset called with: '${datasetName}'`);
 
 	if (datasetName === null) {
 		dataState.selectDatasetWithWorker(null, null);
@@ -83,9 +91,9 @@ export function selectDataset(datasetName: string | null) {
 	endMetric('find-source', 'selection', { found: !!source });
 
 	if (source) {
-		console.log(
-			`[SelectionAction] Resolved source. Updating core state: file='${source.fileId}', domain='${source.domain}'`
-		);
+		console.warn(`[SelectionAction] Resolved: fileId='${source.fileId}', domain='${source.domain}'`);
+		const ds = dataState.getDatasets()[source.fileId];
+		console.warn(`[SelectionAction] Dataset at fileId:`, ds ? { hasData: !!ds.data, dataIsArray: Array.isArray(ds.data), dataLength: Array.isArray(ds.data) ? ds.data.length : 'N/A', fileName: ds.fileName } : 'NOT FOUND');
 
 		// Track state update time
 		startMetric('state-update', 'selection', { fileId: source.fileId, domain: source.domain });

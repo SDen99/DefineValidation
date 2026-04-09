@@ -17,8 +17,11 @@
 	// The currently selected dataset's content, also from the central state.
 	const selectedDataset = $derived.by(() => {
 		const selectedId = dataState.selectedDatasetId.value;
+		const selectedDomain = dataState.selectedDomain.value;
 		if (!selectedId) return null;
-		return dataState.getDatasets()[selectedId];
+		const ds = dataState.getDatasets()[selectedId];
+		console.warn(`[DatasetViewTabs] selectedId='${selectedId}', domain='${selectedDomain}', found=${!!ds}, hasData=${!!ds?.data}, isArray=${Array.isArray(ds?.data)}`);
+		return ds;
 	});
 
 	// Current dataset ID for ClinicalVirtualTable

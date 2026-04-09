@@ -106,6 +106,7 @@
 
 	function handleDatasetClick(datasetId: string) {
 		if (isDeleting) return;
+		console.warn(`[DataXmlList] handleDatasetClick called with: '${datasetId}'`);
 		selectDataset(datasetId);
 	}
 </script>

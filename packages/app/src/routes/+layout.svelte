@@ -28,6 +28,13 @@
 		(window as any).__appState = appState;
 	}
 
+	// Build identifier — visible in Domino console to confirm deployment
+	if (browser) {
+		console.warn('[DEPLOY] Build 36056be4-diag — ' + new Date().toISOString());
+		console.warn('[DEPLOY] URL:', window.location.href);
+		console.warn('[DEPLOY] pathname:', window.location.pathname);
+	}
+
 	$effect(() => {
 		if (!data?.initialData) {
 			initializationFailed = true;
