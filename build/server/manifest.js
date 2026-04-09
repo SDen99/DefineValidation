@@ -6,24 +6,24 @@ function __memo(fn) {
 
 return {
 	appDir: "_app",
-	appPath: "modelproducts/69d693c153739a52ce0179c4/_app",
+	appPath: "_app",
 	assets: new Set(["defineV21-ADaM.xml","favicon.ico","favicon.png","sample-rule-invalid.yaml","sample-rules.yaml"]),
 	mimeTypes: {".xml":"text/xml",".png":"image/png",".yaml":"text/yaml"},
 	_: {
-		client: {start:"_app/immutable/entry/start.CvVN3Xus.js",app:"_app/immutable/entry/app.xEt1PgDA.js",imports:["_app/immutable/entry/start.CvVN3Xus.js","_app/immutable/chunks/Dl8iD9D8.js","_app/immutable/entry/app.xEt1PgDA.js","_app/immutable/chunks/Dl8iD9D8.js"],stylesheets:["_app/immutable/assets/vendor.BpcL6yKj.css","_app/immutable/assets/vendor.BpcL6yKj.css"],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.BwwZHsGr.js",app:"_app/immutable/entry/app.DGrguGg0.js",imports:["_app/immutable/entry/start.BwwZHsGr.js","_app/immutable/chunks/B_AKjhsx.js","_app/immutable/entry/app.DGrguGg0.js","_app/immutable/chunks/B_AKjhsx.js"],stylesheets:["_app/immutable/assets/vendor.BpcL6yKj.css","_app/immutable/assets/vendor.BpcL6yKj.css"],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
-			__memo(() => import('./chunks/0-ZGhQwuTN.js')),
-			__memo(() => import('./chunks/1-DuxrCdD-.js')),
-			__memo(() => import('./chunks/2-8YCYArOo.js')),
-			__memo(() => import('./chunks/3-mfY6rFyR.js')),
-			__memo(() => import('./chunks/4-BZLvqqoU.js')),
-			__memo(() => import('./chunks/5-Ce0uzwGl.js')),
-			__memo(() => import('./chunks/6-gopaT7Ww.js')),
-			__memo(() => import('./chunks/7-CmrvhdT2.js')),
-			__memo(() => import('./chunks/8-DwqB0UPN.js')),
-			__memo(() => import('./chunks/9-iFw_FzrP.js')),
-			__memo(() => import('./chunks/10-BaAEkmwd.js')),
-			__memo(() => import('./chunks/11-BERYAv19.js'))
+			__memo(() => import('./chunks/0-25uXvBAQ.js')),
+			__memo(() => import('./chunks/1-DfB5zbV9.js')),
+			__memo(() => import('./chunks/2-NnEkdqrG.js')),
+			__memo(() => import('./chunks/3-B2RGFqSG.js')),
+			__memo(() => import('./chunks/4-BzDA3DUW.js')),
+			__memo(() => import('./chunks/5-rUv8HNvj.js')),
+			__memo(() => import('./chunks/6-ChZR37pu.js')),
+			__memo(() => import('./chunks/7-DhqD3AJj.js')),
+			__memo(() => import('./chunks/8-DM7EaX4e.js')),
+			__memo(() => import('./chunks/9-B3ve_Elq.js')),
+			__memo(() => import('./chunks/10-OoFL3kO9.js')),
+			__memo(() => import('./chunks/11-D-jvh6Jn.js'))
 		],
 		remotes: {
 			
@@ -98,7 +98,7 @@ return {
 
 const prerendered = new Set([]);
 
-const base = "/modelproducts/69d693c153739a52ce0179c4";
+const base = "";
 
 export { base, manifest, prerendered };
 //# sourceMappingURL=manifest.js.map
