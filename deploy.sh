@@ -29,11 +29,8 @@ fi
 COMMIT_SHA=$(git rev-parse --short HEAD)
 TIMESTAMP=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
 
-# --- Domino base path ---
-export BASE_PATH="/modelproducts/69d693c153739a52ce0179c4"
-
 # --- Build ---
-echo "==> Building on main ($COMMIT_SHA) with BASE_PATH=$BASE_PATH..."
+echo "==> Building on main ($COMMIT_SHA)..."
 pnpm run build
 
 BUILD_DIR="$REPO_ROOT/packages/app/build"
@@ -48,7 +45,6 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 cp -r "$BUILD_DIR" "$TMPDIR/build"
 cp "$REPO_ROOT/app.sh" "$TMPDIR/app.sh"
-cp "$REPO_ROOT/server.js" "$TMPDIR/server.js"
 
 # Minimal package.json for deploy branch
 cat > "$TMPDIR/package.json" <<'PKGJSON'
@@ -72,7 +68,6 @@ cat > "$TMPDIR/.gitignore" <<'GITIGNORE'
 !build/
 !build/**
 !app.sh
-!server.js
 !package.json
 !.nvmrc
 !.gitignore
@@ -95,13 +90,12 @@ fi
 # --- Copy artifacts in ---
 cp -r "$TMPDIR/build" .
 cp "$TMPDIR/app.sh" .
-cp "$TMPDIR/server.js" .
 cp "$TMPDIR/package.json" .
 cp "$TMPDIR/.nvmrc" .
 cp "$TMPDIR/.gitignore" .
 
 # --- Commit only deploy artifacts ---
-git add build/ app.sh server.js package.json .nvmrc .gitignore
+git add build/ app.sh package.json .nvmrc .gitignore
 git commit -m "Deploy $COMMIT_SHA — $TIMESTAMP"
 
 echo "==> Deploy branch updated (from main $COMMIT_SHA)"

@@ -7,10 +7,7 @@ const config = {
     preprocess: vitePreprocess(),
 
     kit: {
-        adapter: adapter({ precompress: true }),
-        paths: {
-            base: '/modelproducts/69d693c153739a52ce0179c4'
-        }
+        adapter: adapter({ precompress: true })
     },
 
     vitePlugin: {
