@@ -7,9 +7,9 @@
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
 	import type { ItemGroup } from '@sden99/cdisc-types';
 	import { ScrollArea } from '@sden99/ui-components';
-	import { goto } from '$app/navigation';
 	import { findDatasetOIDWithType } from '$lib/utils/datasetOIDLookup';
 	import { validationService } from '$lib/services/validationService.svelte';
+	import { selectDataset } from '$lib/core/actions/selectionAction';
 
 	// --- LOCAL COMPONENT STATE ---
 	let dialogOpen = $state(false);
@@ -106,7 +106,7 @@
 
 	function handleDatasetClick(datasetId: string) {
 		if (isDeleting) return;
-		goto(`/datasets/${encodeURIComponent(datasetId)}`);
+		selectDataset(datasetId);
 	}
 </script>
 

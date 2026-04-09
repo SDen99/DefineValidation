@@ -28,14 +28,6 @@
 		(window as any).__appState = appState;
 	}
 
-	// Diagnostic: log the URL context on startup
-	if (browser) {
-		console.log('[DOMINO DEBUG] window.location.href:', window.location.href);
-		console.log('[DOMINO DEBUG] window.location.pathname:', window.location.pathname);
-		console.log('[DOMINO DEBUG] window.location.origin:', window.location.origin);
-		try { console.log('[DOMINO DEBUG] iframe:', window.self !== window.top); } catch(e) { console.log('[DOMINO DEBUG] iframe: cross-origin (blocked)'); }
-	}
-
 	$effect(() => {
 		if (!data?.initialData) {
 			initializationFailed = true;
