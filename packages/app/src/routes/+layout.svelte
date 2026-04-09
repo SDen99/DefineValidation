@@ -45,61 +45,40 @@
 
 	async function initializeApp() {
 		try {
-			console.log('🟡 Starting app initialization...');
-
-			// STEP 1: Create worker
+			// STEP 1: Core services (worker + metadata + file manager)
 			const worker = new DataWorker();
 			dataState.initializeWorker(worker);
-			console.log('✅ Worker initialized');
-
-			// STEP 1.5: Initialize metadata components package
-			console.log('🔄 Initializing metadata components with provider:', !!metadataStateProvider);
 			initializeMetadataComponents(metadataStateProvider);
-			console.log('✅ Metadata components initialized');
-
-			// STEP 2: Create file manager
 			fileManager = new FileImportManager(data.initialData.container, {
-				onDatasetReady: () => validationService.revalidate()
+				onDatasetReady: () => setTimeout(() => validationService.revalidate(), 0)
 			});
-			console.log('✅ File manager created');
 
-			// STEP 3: Load datasets
+			// STEP 2: Load datasets + restore all saved state
 			const { existingDatasets, savedUiState } = data.initialData;
 			if (Object.keys(existingDatasets).length > 0) {
 				dataState.setDatasets(existingDatasets);
-				console.log('✅ Datasets loaded:', Object.keys(existingDatasets));
-
-				// Run validation immediately for all datasets with Define-XML matches
-				validationService.revalidate();
 			}
-
-			// STEP 4: Restore UI state
 			if (savedUiState?.uiPreferences) {
 				appState.restoreAppState(savedUiState.uiPreferences);
-				console.log('✅ UI state restored');
 			}
-
-			// STEP 4.5: Restore theme preferences
 			if (savedUiState?.themePreferences) {
 				appState.theme.value = { ...appState.theme.value, ...savedUiState.themePreferences };
-				console.log('✅ Theme preferences restored:', savedUiState.themePreferences);
 			}
-
-			// STEP 4.7: Restore imported validation rules
 			ruleState.loadFromStorage();
 
-			// STEP 5: Restore last selected dataset immediately
+			// STEP 3: Restore dataset selection
 			const restored = dataState.restoreLastSelection();
-			if (restored) {
-				console.log('✅ Restored last selected dataset');
-			} else if (Object.keys(existingDatasets).length > 0) {
-				const firstId = Object.keys(existingDatasets)[0];
-				console.log(`✅ No saved selection, selecting first: ${firstId}`);
-				dataState.selectDatasetWithWorker(firstId, null);
+			if (!restored && Object.keys(existingDatasets).length > 0) {
+				dataState.selectDatasetWithWorker(Object.keys(existingDatasets)[0], null);
 			}
 
+			// Mark interactive — UI renders now
 			initialized = true;
-			console.log('✅ App initialization complete');
+
+			// STEP 4: Deferred — run validation after UI is painted
+			if (Object.keys(existingDatasets).length > 0) {
+				setTimeout(() => validationService.revalidate(), 0);
+			}
 		} catch (error) {
 			console.error('🔴 Initialization failed:', error);
 			initializationFailed = true;

@@ -68,7 +68,6 @@ const dataStateProvider = new DataStateProviderImpl(
 // Inject into workerState IMMEDIATELY during module initialization
 // This ensures the provider is available before any worker operations
 workerState.setDataStateProvider(dataStateProvider);
-console.log('[dataState] ✅ Injected DataStateProvider into workerState');
 
 // Note: Metadata processing is now initialized in +layout.svelte
 
@@ -145,22 +144,10 @@ export const getLoadingStates = () => stateManager.getLoadingStates();
 export const getDefineXmlInfo = () => stateManager.getDefineXmlInfo();
 export const getActiveDefineInfo = () => stateManager.getActiveDefineInfo();
 export const getActiveItemGroupMetadata = () => stateManager.getActiveItemGroupMetadata();
-export const getAvailableDatasets = () => {
-	const result = stateManager.getAvailableDatasets();
-	console.log(`[dataState] getAvailableDatasets returning:`, {
-		count: result.length,
-		first3: result.slice(0, 3).map((d) => ({ id: d.id, name: d.name }))
-	});
-	return result;
-};
+export const getAvailableDatasets = () => stateManager.getAvailableDatasets();
 export const getAvailableViews = () => stateManager.getAvailableViews();
 export const getIsBdsDataset = () => stateManager.getIsBdsDataset();
-export const getDatasets = () => {
-	const result = stateManager.getDatasets();
-	// Reduced logging to prevent reactivity noise
-	console.log(`[dataState] getDatasets called - ${Object.keys(result).length} datasets`);
-	return result;
-};
+export const getDatasets = () => stateManager.getDatasets();
 export const getOriginalFilenames = () => stateManager.getOriginalFilenames();
 
 // Utility functions
