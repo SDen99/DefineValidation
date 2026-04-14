@@ -65,6 +65,9 @@ export class FileImportManager {
 	}
 
 	async processFile(file: File): Promise<{ success: boolean; error?: Error }> {
+		const t0 = performance.now();
+		console.warn(`[FileImportManager] processFile START: ${file.name} (${(file.size / 1024).toFixed(0)}KB)`);
+
 		dataState.setLoadingState(file.name, {
 			status: 'processing',
 			fileName: file.name,
@@ -79,9 +82,9 @@ export class FileImportManager {
 			// YAML rule files use a separate processing path
 			if (fileName.endsWith('.yaml') || fileName.endsWith('.yml')) {
 				const result = await this.yamlProcessor.processFile(file);
+				console.warn(`[FileImportManager] YAML parsed in ${(performance.now() - t0).toFixed(1)}ms`);
 				ruleState.addRules(result.rules, result.warnings);
 				dataState.clearLoadingState(file.name);
-				// Trigger revalidation so imported rules run against existing datasets
 				this.onDatasetReady?.();
 				return { success: true };
 			}
@@ -95,11 +98,17 @@ export class FileImportManager {
 			const processor = this.processors.get(fileType);
 			if (!processor) throw new Error(`No processor for ${file.name}`);
 
+			console.warn(`[FileImportManager] Processing ${file.name} as ${fileType}...`);
+			const tProcess = performance.now();
 			const result = await processor.processFile(file, (state: DatasetLoadingState) => {
 				dataState.setLoadingState(file.name, state);
 			});
+			console.warn(`[FileImportManager] Processor finished in ${(performance.now() - tProcess).toFixed(1)}ms`);
 
+			const tStore = performance.now();
 			await this.handleProcessingSuccess(file, result);
+			console.warn(`[FileImportManager] Store+notify finished in ${(performance.now() - tStore).toFixed(1)}ms`);
+			console.warn(`[FileImportManager] processFile TOTAL: ${(performance.now() - t0).toFixed(1)}ms`);
 			return { success: true };
 		} catch (error) {
 			this.handleProcessingError(file, error);
@@ -117,15 +126,24 @@ export class FileImportManager {
 			details: domainDataset.details || null
 		};
 
+		let t = performance.now();
 		await datasetService.addDataset(datasetToStore);
-		const updatedDatasets = await datasetService.getAllDatasets();
+		console.warn(`[FileImportManager]   IndexedDB addDataset: ${(performance.now() - t).toFixed(1)}ms`);
 
+		t = performance.now();
+		const updatedDatasets = await datasetService.getAllDatasets();
+		console.warn(`[FileImportManager]   IndexedDB getAllDatasets: ${(performance.now() - t).toFixed(1)}ms`);
+
+		t = performance.now();
 		dataState.setDatasets(updatedDatasets);
+		console.warn(`[FileImportManager]   setDatasets: ${(performance.now() - t).toFixed(1)}ms`);
+
 		dataState.clearLoadingState(file.name);
 		dataState.setProcessingStats(datasetToStore.processingStats);
 
-		// Notify caller (e.g., for validation)
+		t = performance.now();
 		this.onDatasetReady?.();
+		console.warn(`[FileImportManager]   onDatasetReady (validation): ${(performance.now() - t).toFixed(1)}ms`);
 
 		// Auto-select the newly loaded dataset if:
 		// 1. No dataset is currently selected, OR

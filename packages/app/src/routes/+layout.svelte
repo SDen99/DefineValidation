@@ -30,9 +30,20 @@
 
 	// Build identifier — visible in Domino console to confirm deployment
 	if (browser) {
-		console.warn('[DEPLOY] Build 36056be4-diag — ' + new Date().toISOString());
+		console.warn('[DEPLOY] Build upload-diag — ' + new Date().toISOString());
 		console.warn('[DEPLOY] URL:', window.location.href);
-		console.warn('[DEPLOY] pathname:', window.location.pathname);
+
+		// Detect long tasks blocking the main thread (>50ms)
+		if ('PerformanceObserver' in window) {
+			try {
+				const obs = new PerformanceObserver((list) => {
+					for (const entry of list.getEntries()) {
+						console.warn(`[PERF] Long task detected: ${entry.duration.toFixed(0)}ms (started at ${entry.startTime.toFixed(0)}ms)`);
+					}
+				});
+				obs.observe({ type: 'longtask', buffered: true });
+			} catch (_) { /* longtask not supported */ }
+		}
 	}
 
 	$effect(() => {

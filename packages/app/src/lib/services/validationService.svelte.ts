@@ -5,16 +5,16 @@
  * Validates: codelists, length, types, and required fields.
  * Runs validation for ALL datasets with Define-XML matches.
  *
- * Trigger validation by calling `validationService.revalidate()` after
- * datasets or Define-XML data change (e.g., after file import or app init).
+ * Heavy validation (row iteration) runs in a Web Worker to keep the UI responsive.
+ * Rule generation and structural checks stay on the main thread.
  */
 
 import * as dataState from '$lib/core/state/dataState.svelte';
 import { convertToDefineVariables } from '$lib/adapters/defineVariablesAdapter';
 import {
 	generateRulesFromDefine,
-	validate,
 	convertDefineVariables,
+	validate,
 	type Rule,
 	type ValidationResult,
 	type ValidationEngineError,
@@ -22,6 +22,9 @@ import {
 } from '@sden99/validation-engine';
 import { normalizeDatasetId } from '@sden99/dataset-domain';
 import { ruleState } from '$lib/core/state/ruleState.svelte';
+import { browser } from '$app/environment';
+import type { SerializedValidationResult, ValidateResponse } from '$lib/core/services/validation.worker';
+import ValidationWorker from '$lib/core/services/validation.worker?worker';
 
 // =============================================================================
 // Types
@@ -42,20 +45,100 @@ let resultsByDataset = $state<Map<string, ValidationCacheEntry>>(new Map());
 let isValidating = $state(false);
 let lastError = $state<string | null>(null);
 
+// Worker instance (lazy-initialized)
+let worker: Worker | null = null;
+let requestId = 0;
+let pendingRequests = new Map<number, {
+	datasetId: string;
+	resolve: (result: { results: ValidationResult[]; errors: ValidationEngineError[] }) => void;
+}>();
+
+function getWorker(): Worker | null {
+	if (!browser) return null;
+	if (!worker) {
+		try {
+			worker = new ValidationWorker();
+			worker.onmessage = handleWorkerMessage;
+			worker.onerror = (err) => {
+				console.error('[ValidationService] Worker error:', err);
+			};
+		} catch (e) {
+			console.error('[ValidationService] Failed to create worker:', e);
+			return null;
+		}
+	}
+	return worker;
+}
+
+function handleWorkerMessage(e: MessageEvent<ValidateResponse>) {
+	const { type, id, payload } = e.data;
+	if (type !== 'VALIDATE_RESULT') return;
+
+	const pending = pendingRequests.get(id);
+	if (!pending) return;
+	pendingRequests.delete(id);
+
+	// Deserialize: convert Record<string, number> back to Map<string, number>
+	const results: ValidationResult[] = payload.results.map(deserializeResult);
+	pending.resolve({ results, errors: payload.errors });
+}
+
+function deserializeResult(sr: SerializedValidationResult): ValidationResult {
+	const result: ValidationResult = {
+		ruleId: sr.ruleId,
+		columnId: sr.columnId,
+		severity: sr.severity,
+		issueCount: sr.issueCount,
+		affectedRows: sr.affectedRows,
+		message: sr.message
+	};
+	if (sr.details) {
+		result.details = { rule: sr.details.rule };
+		if (sr.details.invalidValues) {
+			result.details.invalidValues = new Map(Object.entries(sr.details.invalidValues).map(
+				([k, v]) => [k, v as number]
+			));
+		}
+	}
+	return result;
+}
+
+function validateViaWorker(
+	datasetId: string,
+	data: Record<string, unknown>[],
+	rules: Rule[],
+	domain: string
+): Promise<{ results: ValidationResult[]; errors: ValidationEngineError[] }> {
+	const w = getWorker();
+	if (!w) {
+		// Fallback: run synchronously if worker unavailable (SSR or error)
+		const errors: ValidationEngineError[] = [];
+		const results = validate(data, rules, domain, errors);
+		return Promise.resolve({ results, errors });
+	}
+
+	const id = ++requestId;
+	return new Promise((resolve) => {
+		pendingRequests.set(id, { datasetId, resolve });
+		w.postMessage({
+			type: 'VALIDATE',
+			id,
+			payload: { datasetId, data, rules, domain }
+		});
+	});
+}
 
 // =============================================================================
-// Internal Functions
+// Internal Functions (Main Thread)
 // =============================================================================
 
 /**
  * Deduplicate rules: imported rules take priority over auto-generated ones
  * when they target the same variable with the same rule type.
- * This prevents double-counting when an imported rule overlaps an auto-generated one.
  */
 function deduplicateRules(autoRules: Rule[], importedRules: Rule[]): Rule[] {
 	if (importedRules.length === 0) return autoRules;
 
-	// Build a set of keys from imported rules: "variable|ruleType"
 	const importedKeys = new Set<string>();
 	for (const rule of importedRules) {
 		const variable = rule.Target_Variable || '';
@@ -65,12 +148,11 @@ function deduplicateRules(autoRules: Rule[], importedRules: Rule[]): Rule[] {
 		}
 	}
 
-	// Filter out auto rules that overlap with imported rules
 	const filteredAuto = autoRules.filter((rule) => {
 		const variable = rule.Target_Variable || '';
 		const type = rule.Rule_Type || '';
 		if (variable && importedKeys.has(`${variable}|${type}`)) {
-			return false; // Skip — imported rule covers this
+			return false;
 		}
 		return true;
 	});
@@ -79,77 +161,31 @@ function deduplicateRules(autoRules: Rule[], importedRules: Rule[]): Rule[] {
 }
 
 /**
- * Run validation for a specific dataset against its matching Define-XML.
+ * Prepare rules for a dataset (main thread — needs state access).
+ * Returns the rules to send to the worker + validation vars for structural checks.
  */
-function runValidation(
-	_datasetId: string,
-	datasetData: unknown[],
-	domain: string,
-	defineVariables: DefineVariableForValidation[]
-): { results: ValidationResult[]; errors: ValidationEngineError[] } {
-	const autoRules = generateRulesFromDefine(defineVariables, domain);
-
-	// Merge imported rules that apply to this domain and are fully executable
-	const importedForDomain = ruleState
-		.getRulesForDomain(domain)
-		.filter((r) => r.Executability === 'Fully Executable');
-
-	// Deduplicate: imported rules take priority over auto-generated ones
-	// when they target the same variable with the same check type
-	const allRules = deduplicateRules(autoRules, importedForDomain);
-
-	if (allRules.length === 0) {
-		return { results: [], errors: [] };
-	}
-
-	const errors: ValidationEngineError[] = [];
-	const results = validate(datasetData as Record<string, unknown>[], allRules, domain, errors);
-	return { results, errors };
-}
-
-/**
- * Validate a single dataset against a specific Define-XML.
- * Returns the results or null if validation can't run.
- */
-function validateDataset(
-	datasetId: string,
-	datasetData: unknown[],
+function prepareRulesForDataset(
 	domainName: string,
-	define: import('@sden99/cdisc-types/define-xml').ParsedDefineXML,
-	defineType: string
-): { results: ValidationResult[]; errors: ValidationEngineError[] } | null {
-	// Skip if already validated (results are cached)
-	if (resultsByDataset.has(datasetId)) {
-		return null;
-	}
-
-	// Get ItemGroup metadata for this domain from the Define-XML
+	define: import('@sden99/cdisc-types/define-xml').ParsedDefineXML
+): { rules: Rule[]; validationVars: DefineVariableForValidation[] } | null {
 	const itemGroup = dataState.getItemGroupMetadata(domainName);
 	if (!itemGroup) return null;
 
-	// Convert to validation engine format
 	const defineVars = convertToDefineVariables(itemGroup, define);
 	const validationVars = convertDefineVariables(defineVars, domainName);
-
 	if (validationVars.length === 0) return null;
 
-	const { results, errors } = runValidation(datasetId, datasetData, domainName, validationVars);
+	const autoRules = generateRulesFromDefine(validationVars, domainName);
+	const importedForDomain = ruleState
+		.getRulesForDomain(domainName)
+		.filter((r) => r.Executability === 'Fully Executable');
+	const rules = deduplicateRules(autoRules, importedForDomain);
 
-	// Structural checks: compare Define-XML variables vs actual data columns
-	const structuralResults = checkStructuralMismatches(
-		datasetData as Record<string, unknown>[],
-		validationVars,
-		domainName
-	);
-	results.push(...structuralResults);
-
-	return { results, errors };
+	return { rules, validationVars };
 }
 
 /**
  * Check for structural mismatches between Define-XML variables and actual data columns.
- * Produces "Missing Variable" results (in Define but not in data) and
- * "Undocumented Variable" results (in data but not in Define).
  */
 function checkStructuralMismatches(
 	datasetData: Record<string, unknown>[],
@@ -162,7 +198,6 @@ function checkStructuralMismatches(
 	const dataColumns = new Set(Object.keys(datasetData[0]));
 	const defineNames = new Set(defineVars.map((v) => v.name));
 
-	// Missing variables: in Define-XML but not in data
 	for (const name of defineNames) {
 		if (!dataColumns.has(name)) {
 			results.push({
@@ -202,7 +237,6 @@ function checkStructuralMismatches(
 		}
 	}
 
-	// Undocumented variables: in data but not in Define-XML
 	for (const col of dataColumns) {
 		if (!defineNames.has(col)) {
 			results.push({
@@ -247,16 +281,14 @@ function checkStructuralMismatches(
 
 /**
  * Validate ALL datasets that have a matching Define-XML.
- * Caches results per dataset so they're available instantly on navigation.
+ * Rule generation happens on main thread; row evaluation happens in worker.
  */
-function validateAllDatasets(): void {
+async function validateAllDatasets(): Promise<void> {
 	const datasets = dataState.getDatasets();
 	const defineInfo = dataState.getDefineXmlInfo();
 
-	// Need at least one Define-XML
 	if (!defineInfo.ADaM && !defineInfo.SDTM) return;
 
-	// Build lookup: normalized domain name → { define, type }
 	const defineMatches: Array<{
 		normalizedName: string;
 		define: import('@sden99/cdisc-types/define-xml').ParsedDefineXML;
@@ -280,20 +312,25 @@ function validateAllDatasets(): void {
 
 	isValidating = true;
 	lastError = null;
-	let newCache = new Map(resultsByDataset);
-	let validated = 0;
 
 	try {
-		// Iterate all tabular datasets
+		// Collect all validation jobs
+		const jobs: Array<{
+			fileId: string;
+			data: Record<string, unknown>[];
+			rules: Rule[];
+			validationVars: DefineVariableForValidation[];
+			domainName: string;
+		}> = [];
+
 		for (const [fileId, dataset] of Object.entries(datasets)) {
 			if (!dataset?.data || !Array.isArray(dataset.data)) continue;
+			if (resultsByDataset.has(fileId)) continue; // already cached
 
-			// Find matching Define-XML by normalized filename
 			const normalizedFileId = normalizeDatasetId(fileId);
 			const match = defineMatches.find((m) => m.normalizedName === normalizedFileId);
 			if (!match) continue;
 
-			// Determine domain name (use the original ItemGroup name, not file ID)
 			const domainName =
 				match.define.ItemGroups.find(
 					(ig) =>
@@ -302,28 +339,56 @@ function validateAllDatasets(): void {
 				)?.SASDatasetName ||
 				match.normalizedName.toUpperCase();
 
-			const outcome = validateDataset(
+			const prepared = prepareRulesForDataset(domainName, match.define);
+			if (!prepared || prepared.rules.length === 0) continue;
+
+			jobs.push({
 				fileId,
-				dataset.data,
-				domainName,
-				match.define,
-				match.type
+				data: dataset.data as Record<string, unknown>[],
+				rules: prepared.rules,
+				validationVars: prepared.validationVars,
+				domainName
+			});
+		}
+
+		if (jobs.length === 0) {
+			isValidating = false;
+			return;
+		}
+
+		// Send all jobs to worker in parallel
+		const promises = jobs.map(async (job) => {
+			const { results, errors } = await validateViaWorker(
+				job.fileId,
+				job.data,
+				job.rules,
+				job.domainName
 			);
 
-			if (outcome !== null) {
-				newCache.set(fileId, {
-					results: outcome.results,
-					errors: outcome.errors,
-					timestamp: Date.now(),
-					rulesGenerated: outcome.results.length
-				});
-				validated++;
-			}
-		}
+			// Structural checks run on main thread (fast, needs no row iteration)
+			const structuralResults = checkStructuralMismatches(
+				job.data,
+				job.validationVars,
+				job.domainName
+			);
+			results.push(...structuralResults);
 
-		if (validated > 0) {
-			resultsByDataset = newCache;
+			return { fileId: job.fileId, results, errors };
+		});
+
+		const outcomes = await Promise.all(promises);
+
+		// Update cache with all results
+		const newCache = new Map(resultsByDataset);
+		for (const { fileId, results, errors } of outcomes) {
+			newCache.set(fileId, {
+				results,
+				errors,
+				timestamp: Date.now(),
+				rulesGenerated: results.length
+			});
 		}
+		resultsByDataset = newCache;
 	} catch (error) {
 		lastError = error instanceof Error ? error.message : String(error);
 		console.error('[ValidationService] Validation failed:', error);
@@ -337,29 +402,18 @@ function validateAllDatasets(): void {
 // =============================================================================
 
 export const validationService = {
-	/**
-	 * Whether validation is currently running.
-	 */
 	get isValidating() {
 		return isValidating;
 	},
 
-	/**
-	 * Last error message, if any.
-	 */
 	get lastError() {
 		return lastError;
 	},
 
-	/**
-	 * Get validation results for a specific dataset.
-	 */
 	getResultsForDataset(datasetId: string): ValidationResult[] {
-		// Try exact match first
 		const entry = resultsByDataset.get(datasetId);
 		if (entry) return entry.results;
 
-		// Fall back to normalized lookup (e.g., "ADSL" matches "adsl.sas7bdat")
 		const normalized = normalizeDatasetId(datasetId);
 		for (const [key, value] of resultsByDataset) {
 			if (normalizeDatasetId(key) === normalized) {
@@ -369,16 +423,10 @@ export const validationService = {
 		return [];
 	},
 
-	/**
-	 * Get the full cache entry for a dataset (includes metadata).
-	 */
 	getCacheEntry(datasetId: string): ValidationCacheEntry | undefined {
 		return resultsByDataset.get(datasetId);
 	},
 
-	/**
-	 * Get results grouped by column for a dataset.
-	 */
 	getResultsByColumn(datasetId: string): Map<string, ValidationResult[]> {
 		const results = this.getResultsForDataset(datasetId);
 		const byColumn = new Map<string, ValidationResult[]>();
@@ -392,9 +440,6 @@ export const validationService = {
 		return byColumn;
 	},
 
-	/**
-	 * Get engine errors for a specific dataset (unknown operators, missing columns, etc.).
-	 */
 	getErrorsForDataset(datasetId: string): ValidationEngineError[] {
 		const entry = resultsByDataset.get(datasetId);
 		if (entry) return entry.errors;
@@ -408,18 +453,11 @@ export const validationService = {
 		return [];
 	},
 
-	/**
-	 * Get the total issue count for a dataset.
-	 */
 	getTotalIssueCount(datasetId: string): number {
 		const results = this.getResultsForDataset(datasetId);
 		return results.reduce((sum, r) => sum + r.issueCount, 0);
 	},
 
-	/**
-	 * Get violations for a specific rule across all datasets.
-	 * Returns array of { datasetId, columnId, affectedRows, issueCount }.
-	 */
 	getViolationsByRule(ruleId: string): Array<{
 		datasetId: string;
 		columnId: string;
@@ -447,9 +485,6 @@ export const validationService = {
 		return violations;
 	},
 
-	/**
-	 * Invalidate cached results for a dataset (or all if no ID provided).
-	 */
 	invalidateCache(datasetId?: string): void {
 		if (datasetId) {
 			const newCache = new Map(resultsByDataset);
@@ -460,19 +495,11 @@ export const validationService = {
 		}
 	},
 
-	/**
-	 * Force re-validation of all datasets.
-	 * Call this after datasets or Define-XML data changes.
-	 */
 	revalidate(): void {
 		resultsByDataset = new Map();
 		validateAllDatasets();
 	},
 
-	/**
-	 * Get all auto-generated rules across all validated datasets.
-	 * Returns deduplicated rules (one per unique rule ID).
-	 */
 	getAutoGeneratedRules(): Rule[] {
 		const defineInfo = dataState.getDefineXmlInfo();
 		const ruleMap = new Map<string, Rule>();
