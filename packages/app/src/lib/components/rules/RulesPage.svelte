@@ -2,6 +2,7 @@
 	import Upload from '@lucide/svelte/icons/upload';
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Download from '@lucide/svelte/icons/download';
+	import Eye from '@lucide/svelte/icons/eye';
 	import {
 		Button,
 		Badge,
@@ -30,6 +31,8 @@
 	import { FileImportManager } from '$lib/core/services/FileImportManager';
 	import { browser } from '$app/environment';
 	import * as errorState from '$lib/core/state/errorState.svelte.ts';
+	import * as appState from '$lib/core/state/appState.svelte.ts';
+	import { selectDataset } from '$lib/core/actions/selectionAction';
 	import type { Rule } from '@sden99/validation-engine';
 
 	let { data } = $props();
@@ -81,6 +84,20 @@
 		return allRules;
 	});
 
+	// Violation counts per rule (reactive — updates when validation results change)
+	let violationsByRule = $derived.by(() => {
+		const map = new Map<string, { totalIssues: number; datasets: string[] }>();
+		for (const rule of allRules) {
+			const violations = validationService.getViolationsByRule(rule.Core.Id);
+			if (violations.length > 0) {
+				const datasets = [...new Set(violations.map((v) => v.datasetId))];
+				const totalIssues = violations.reduce((sum, v) => sum + v.issueCount, 0);
+				map.set(rule.Core.Id, { totalIssues, datasets });
+			}
+		}
+		return map;
+	});
+
 	function isImported(rule: Rule): boolean {
 		return !rule.Core.Id.startsWith('AUTO.');
 	}
@@ -111,6 +128,18 @@
 			downloadFile(content, `rules-${scope}.json`, 'application/json');
 		}
 		showExportMenu = false;
+	}
+
+	function handleViewViolations(ruleId: string) {
+		const violations = validationService.getViolationsByRule(ruleId);
+		if (violations.length === 0) return;
+
+		// Select the first dataset that has violations for this rule
+		const firstViolation = violations[0];
+		selectDataset(firstViolation.datasetId);
+
+		// Switch to dataset view
+		appState.appView.value = 'datasets';
 	}
 
 	function getScopeDisplay(rule: Rule): string {
@@ -247,6 +276,7 @@
 			{:else}
 				<div class="space-y-3">
 					{#each displayedRules as rule (rule.Core.Id)}
+						{@const ruleViolations = violationsByRule.get(rule.Core.Id)}
 						<Card>
 							<CardHeader class="pb-3">
 								<div class="flex items-start justify-between">
@@ -261,18 +291,37 @@
 											<Badge variant={getExecutabilityVariant(rule)}>
 												{rule.Executability}
 											</Badge>
+											{#if ruleViolations}
+												<Badge variant="destructive">
+													{ruleViolations.totalIssues} {ruleViolations.totalIssues === 1 ? 'issue' : 'issues'}
+												</Badge>
+											{/if}
 										</CardTitle>
 									</div>
-									{#if isImported(rule)}
-										<Button
-											variant="ghost"
-											size="sm"
-											class="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
-											onclick={() => handleDelete(rule.Core.Id)}
-										>
-											<Trash2 class="h-4 w-4" />
-										</Button>
-									{/if}
+									<div class="flex items-center gap-1">
+										{#if ruleViolations}
+											<Button
+												variant="ghost"
+												size="sm"
+												class="text-muted-foreground hover:text-foreground h-8 gap-1.5 px-2"
+												onclick={() => handleViewViolations(rule.Core.Id)}
+												title="View violations in dataset"
+											>
+												<Eye class="h-4 w-4" />
+												<span class="text-xs">View</span>
+											</Button>
+										{/if}
+										{#if isImported(rule)}
+											<Button
+												variant="ghost"
+												size="sm"
+												class="text-muted-foreground hover:text-destructive h-8 w-8 p-0"
+												onclick={() => handleDelete(rule.Core.Id)}
+											>
+												<Trash2 class="h-4 w-4" />
+											</Button>
+										{/if}
+									</div>
 								</div>
 							</CardHeader>
 							<CardContent class="pt-0">
@@ -284,6 +333,11 @@
 									{/if}
 									<Badge variant="secondary">Scope: {getScopeDisplay(rule)}</Badge>
 									<Badge variant="outline">Sensitivity: {rule.Sensitivity}</Badge>
+									{#if ruleViolations}
+										<Badge variant="outline">
+											{ruleViolations.datasets.length} {ruleViolations.datasets.length === 1 ? 'dataset' : 'datasets'} affected
+										</Badge>
+									{/if}
 								</div>
 							</CardContent>
 						</Card>

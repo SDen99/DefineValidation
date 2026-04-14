@@ -417,6 +417,37 @@ export const validationService = {
 	},
 
 	/**
+	 * Get violations for a specific rule across all datasets.
+	 * Returns array of { datasetId, columnId, affectedRows, issueCount }.
+	 */
+	getViolationsByRule(ruleId: string): Array<{
+		datasetId: string;
+		columnId: string;
+		affectedRows: number[];
+		issueCount: number;
+	}> {
+		const violations: Array<{
+			datasetId: string;
+			columnId: string;
+			affectedRows: number[];
+			issueCount: number;
+		}> = [];
+		for (const [datasetId, entry] of resultsByDataset) {
+			for (const result of entry.results) {
+				if (result.ruleId === ruleId && result.issueCount > 0) {
+					violations.push({
+						datasetId,
+						columnId: result.columnId,
+						affectedRows: [...result.affectedRows],
+						issueCount: result.issueCount
+					});
+				}
+			}
+		}
+		return violations;
+	},
+
+	/**
 	 * Invalidate cached results for a dataset (or all if no ID provided).
 	 */
 	invalidateCache(datasetId?: string): void {

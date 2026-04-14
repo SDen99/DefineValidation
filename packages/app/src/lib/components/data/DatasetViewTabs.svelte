@@ -1,36 +1,29 @@
 <script lang="ts">
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sden99/ui-components';
-	import { ClinicalDataTableV3, type SerializedFilter, type SortConfig } from '@sden99/data-table-v3';
+	import { ClinicalDataTableV3, type SerializedFilter, type SortConfig, type ColumnValidationInfo, type ValidationCheckDetail } from '@sden99/data-table-v3';
 	import { convertToDefineVariables } from '$lib/adapters/defineVariablesAdapter';
 
 	// --- NEW ARCHITECTURE IMPORTS ---
-	// Import directly from the authoritative state modules.
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
 	import * as workerState from '$lib/core/state/workerState.svelte.ts';
 	import { startMetric, endMetric } from '$lib/utils/performanceMetrics.svelte';
+	import { validationService } from '$lib/services/validationService.svelte';
 
 	// V3 Persistence layer
 	import { loadTableState, saveTableState } from '$lib/utils/tableStatePersistence.svelte';
 
 	// --- REACTIVE DERIVED STATE ---
 
-	// The currently selected dataset's content, also from the central state.
 	const selectedDataset = $derived.by(() => {
 		const selectedId = dataState.selectedDatasetId.value;
-		const selectedDomain = dataState.selectedDomain.value;
 		if (!selectedId) return null;
-		const ds = dataState.getDatasets()[selectedId];
-		console.warn(`[DatasetViewTabs] selectedId='${selectedId}', domain='${selectedDomain}', found=${!!ds}, hasData=${!!ds?.data}, isArray=${Array.isArray(ds?.data)}`);
-		return ds;
+		return dataState.getDatasets()[selectedId];
 	});
 
-	// Current dataset ID for ClinicalVirtualTable
 	const currentDatasetId = $derived(dataState.selectedDatasetId.value);
 
-	// Dataset details (dtypes) for chart filter type resolution
 	const datasetDetails = $derived(selectedDataset?.details);
 
-	// Define-XML variable metadata for chart filter codelist/type resolution
 	const defineVariables = $derived.by(() => {
 		const name = dataState.selectedDomain.value || dataState.selectedDatasetId.value;
 		const itemGroup = dataState.getItemGroupMetadata(name);
@@ -43,13 +36,12 @@
 	// Reference to the ClinicalVirtualTable component for sidebar integration
 	let { clinicalTableRef = $bindable() } = $props();
 
-	// V3 Persistence: Load persisted table state for current dataset
+	// V3 Persistence
 	const tablePersistedState = $derived.by(() => {
 		if (!currentDatasetId) return { filters: undefined, sort: undefined };
 		return loadTableState(currentDatasetId);
 	});
 
-	// V3 Persistence handlers
 	function handleTableFilterChange(filters: SerializedFilter[]) {
 		if (!currentDatasetId) return;
 		saveTableState(currentDatasetId, filters, tablePersistedState.sort || [], tablePersistedState.columnWidths);
@@ -63,6 +55,63 @@
 	function handleTableWidthChange(widths: Record<string, number>) {
 		if (!currentDatasetId) return;
 		saveTableState(currentDatasetId, tablePersistedState.filters || [], tablePersistedState.sort || [], widths);
+	}
+
+	// --- VALIDATION BADGES ---
+
+	const validationResultsMap = $derived.by(() => {
+		if (!currentDatasetId) return new Map<string, ColumnValidationInfo>();
+		const results = validationService.getResultsForDataset(currentDatasetId);
+		const map = new Map<string, ColumnValidationInfo>();
+		for (const result of results) {
+			const existing = map.get(result.columnId);
+			const check: ValidationCheckDetail = {
+				ruleId: result.ruleId,
+				checkType: result.details?.rule?.Rule_Type || 'Check',
+				issueCount: result.issueCount,
+				severity: result.severity,
+				affectedRows: [...result.affectedRows],
+				invalidValues: result.details?.invalidValues
+			};
+			if (existing) {
+				existing.issueCount += result.issueCount;
+				existing.affectedRows = [...new Set([...(existing.affectedRows || []), ...result.affectedRows])];
+				if (result.severity === 'error') existing.severity = 'error';
+				else if (result.severity === 'warning' && existing.severity !== 'error') existing.severity = 'warning';
+				existing.checks!.push(check);
+			} else {
+				map.set(result.columnId, {
+					issueCount: result.issueCount,
+					severity: result.severity,
+					affectedRows: [...result.affectedRows],
+					checks: [check]
+				});
+			}
+		}
+		return map;
+	});
+
+	function handleValidationBadgeClick(columnId: string, affectedRows: number[], ruleId?: string) {
+		if (affectedRows.length === 0 || !selectedDataset?.data) return;
+
+		const rows = selectedDataset.data as Record<string, unknown>[];
+		const valueSet = new Set<unknown>();
+		for (const rowIdx of affectedRows) {
+			if (rowIdx < rows.length) {
+				valueSet.add(rows[rowIdx][columnId]);
+			}
+		}
+
+		const filterValues = Array.from(valueSet);
+		if (filterValues.length === 0) return;
+
+		clinicalTableRef?.clearAllFilters();
+		clinicalTableRef?.applyFilter(columnId, {
+			type: 'set',
+			columnId,
+			operator: 'in',
+			values: filterValues
+		});
 	}
 
 	const triggerClass =
@@ -91,6 +140,8 @@
 					chartFilterHeight={90}
 					{datasetDetails}
 					{defineVariables}
+					validationResults={validationResultsMap}
+					onValidationBadgeClick={handleValidationBadgeClick}
 					initialFilters={tablePersistedState.filters}
 					initialSort={tablePersistedState.sort}
 					initialColumnWidths={tablePersistedState.columnWidths}
