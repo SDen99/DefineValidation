@@ -1,6 +1,6 @@
 <script lang="ts">
 	// --- CORE SVELTE & COMPONENT IMPORTS ---
-	import { Search } from '@lucide/svelte/icons';
+	import { Search, Loader2 } from '@lucide/svelte/icons';
 	import { Input } from '@sden99/ui-components';
 	import DatasetCardItem from './DatasetCardItem.svelte';
 	import ConfirmationDialog from '$lib/components/shared/ConfirmationDialog.svelte';
@@ -24,6 +24,12 @@
 		const originalFilename = dataState.getOriginalFilename(datasetToDelete);
 		const datasetName = originalFilename || datasetToDelete;
 		return `Are you sure you want to delete ${datasetName}? This action cannot be undone.`;
+	});
+
+	// --- ACTIVE LOADING FILES ---
+	const activeLoads = $derived.by(() => {
+		const states = dataState.getLoadingStates();
+		return Object.values(states).filter((s) => s.status === 'processing');
 	});
 
 	// --- REACTIVE DERIVED STATE ---
@@ -120,6 +126,20 @@
 	<ScrollArea class="h-[calc(100vh-18rem)]">
 		<div class="px-3">
 			<div class="space-y-2">
+				{#each activeLoads as load (load.fileName)}
+					<div class="bg-muted/50 border-border rounded-lg border px-3 py-2.5">
+						<div class="flex items-center gap-2">
+							<Loader2 class="text-muted-foreground h-3.5 w-3.5 animate-spin" />
+							<span class="text-muted-foreground truncate text-sm font-medium">{load.fileName}</span>
+						</div>
+						<div class="bg-muted mt-2 h-1.5 overflow-hidden rounded-full">
+							<div
+								class="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
+								style="width: {Math.round(load.progress)}%"
+							></div>
+						</div>
+					</div>
+				{/each}
 				{#if cardProps.length > 0}
 					{#each cardProps as props (props.id)}
 						<DatasetCardItem

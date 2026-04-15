@@ -163,6 +163,18 @@ export class WorkerPool {
 		const task = this.taskQueue.find((t) => t.id === e.data.taskId);
 		if (!task) return;
 
+		if (e.data.type === 'PROGRESS') {
+			// Forward progress from worker to the task's callback (50-95% range)
+			task.onProgress({
+				status: 'processing',
+				fileName: task.fileName,
+				progress: e.data.progress,
+				totalSize: 0,
+				loadedSize: 0
+			});
+			return;
+		}
+
 		if (e.data.type === 'PROCESSING_COMPLETE') {
 			task.resolve(e.data.result);
 		} else if (e.data.type === 'PROCESSING_ERROR') {

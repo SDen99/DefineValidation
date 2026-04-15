@@ -24,6 +24,8 @@
 	let initializationFailed = $state(false);
 	let isDragging = $state(false);
 	let dragCounter = 0;
+	let droppedFileCount = $state(0);
+	let dropNotificationTimer: ReturnType<typeof setTimeout> | undefined;
 
 	// Expose appState on window in dev mode for console toggling
 	if (browser && dev) {
@@ -129,6 +131,9 @@
 		});
 
 		if (validFiles.length) {
+			droppedFileCount = validFiles.length;
+			clearTimeout(dropNotificationTimer);
+			dropNotificationTimer = setTimeout(() => { droppedFileCount = 0; }, 3000);
 			await Promise.allSettled(validFiles.map((file) => fileManager.processFile(file)));
 		}
 	}
@@ -189,6 +194,9 @@
 
 		const files = e.dataTransfer?.files;
 		if (files?.length) {
+			droppedFileCount = files.length;
+			clearTimeout(dropNotificationTimer);
+			dropNotificationTimer = setTimeout(() => { droppedFileCount = 0; }, 3000);
 			handleDroppedFiles(Array.from(files));
 		}
 	}
@@ -238,6 +246,14 @@
 		<div class="rounded-xl border-2 border-dashed border-white/60 bg-white/10 px-12 py-10 text-center">
 			<p class="text-2xl font-semibold text-white">Drop files here</p>
 			<p class="mt-2 text-sm text-white/70">.sas7bdat, .xpt, .xml, .json, .yaml</p>
+		</div>
+	</div>
+{/if}
+{#if droppedFileCount > 0}
+	<div class="fixed top-4 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-top-2 duration-200">
+		<div class="bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-lg">
+			<div class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+			Processing {droppedFileCount} {droppedFileCount === 1 ? 'file' : 'files'}...
 		</div>
 	</div>
 {/if}

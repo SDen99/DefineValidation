@@ -47,8 +47,9 @@ initializePyodideInWorker();
 /**
  * @param {ArrayBuffer} arrayBuffer
  * @param {string} fileName - Original filename to determine format
+ * @param {string} [taskId] - Task ID for progress reporting
  */
-async function processSasFile(arrayBuffer, fileName) {
+async function processSasFile(arrayBuffer, fileName, taskId) {
 	if (!pyodide) {
 		throw new Error('Pyodide not initialized');
 	}
@@ -116,6 +117,9 @@ async function processSasFile(arrayBuffer, fileName) {
             result
         `);
 
+		// 70%: pandas read + type conversion complete
+		if (taskId) self.postMessage({ type: 'PROGRESS', taskId, progress: 70 });
+
 		// Parse the JSON string we got from Python
 		const parsedResult = JSON.parse(result);
 
@@ -123,8 +127,14 @@ async function processSasFile(arrayBuffer, fileName) {
 			throw new Error(parsedResult.error);
 		}
 
+		// 85%: main parse complete, parsing nested data
+		if (taskId) self.postMessage({ type: 'PROGRESS', taskId, progress: 85 });
+
 		// Parse the nested data JSON string
 		parsedResult.data = JSON.parse(parsedResult.data);
+
+		// 95%: all parsing complete, about to return
+		if (taskId) self.postMessage({ type: 'PROGRESS', taskId, progress: 95 });
 
 		return parsedResult;
 	} catch (error) {
@@ -148,7 +158,10 @@ self.onmessage = async (e) => {
 		const startTime = performance.now();
 
 		try {
-			const result = await processSasFile(file, fileName);
+			// Signal: file received, starting pandas processing
+			self.postMessage({ type: 'PROGRESS', taskId, progress: 50 });
+
+			const result = await processSasFile(file, fileName, taskId);
 			const processingTime = (performance.now() - startTime) / 1000;
 
 			self.postMessage({
