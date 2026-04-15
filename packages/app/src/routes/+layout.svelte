@@ -152,15 +152,19 @@
 		}
 	}
 
+	function isFileDrag(e: DragEvent): boolean {
+		return e.dataTransfer?.types.includes('Files') ?? false;
+	}
+
 	function handleDragEnter(e: DragEvent) {
+		if (!isFileDrag(e)) return;
 		e.preventDefault();
 		dragCounter++;
-		if (e.dataTransfer?.types.includes('Files')) {
-			isDragging = true;
-		}
+		isDragging = true;
 	}
 
 	function handleDragLeave(e: DragEvent) {
+		if (!isFileDrag(e)) return;
 		e.preventDefault();
 		dragCounter--;
 		if (dragCounter <= 0) {
@@ -170,6 +174,7 @@
 	}
 
 	function handleDragOver(e: DragEvent) {
+		if (!isFileDrag(e)) return;
 		e.preventDefault();
 		if (e.dataTransfer) {
 			e.dataTransfer.dropEffect = 'copy';
@@ -177,6 +182,7 @@
 	}
 
 	function handleDrop(e: DragEvent) {
+		if (!isFileDrag(e)) return;
 		e.preventDefault();
 		dragCounter = 0;
 		isDragging = false;
