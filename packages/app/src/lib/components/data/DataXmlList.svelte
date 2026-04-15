@@ -132,9 +132,9 @@
 							<Loader2 class="text-muted-foreground h-3.5 w-3.5 animate-spin" />
 							<span class="text-muted-foreground truncate text-sm font-medium">{load.fileName}</span>
 						</div>
-						<div class="bg-muted mt-2 h-1.5 overflow-hidden rounded-full">
+						<div class="bg-border mt-2 h-1.5 overflow-hidden rounded-full">
 							<div
-								class="bg-primary h-full rounded-full transition-[width] duration-500 ease-out"
+								class="bg-info h-full rounded-full transition-[width] duration-500 ease-out"
 								style="width: {Math.round(load.progress)}%"
 							></div>
 						</div>

@@ -75,11 +75,11 @@
 				onDatasetReady: () => setTimeout(() => validationService.revalidate(), 0)
 			});
 
+			// Mark interactive — app shell renders now, remaining state loads reactively
+			initialized = true;
+
 			// STEP 2: Load datasets + restore all saved state
 			const { existingDatasets, savedUiState } = data.initialData;
-			if (Object.keys(existingDatasets).length > 0) {
-				dataState.setDatasets(existingDatasets);
-			}
 			if (savedUiState?.uiPreferences) {
 				appState.restoreAppState(savedUiState.uiPreferences);
 			}
@@ -87,15 +87,15 @@
 				appState.theme.value = { ...appState.theme.value, ...savedUiState.themePreferences };
 			}
 			ruleState.loadFromStorage();
+			if (Object.keys(existingDatasets).length > 0) {
+				dataState.setDatasets(existingDatasets);
+			}
 
 			// STEP 3: Restore dataset selection
 			const restored = dataState.restoreLastSelection();
 			if (!restored && Object.keys(existingDatasets).length > 0) {
 				dataState.selectDatasetWithWorker(Object.keys(existingDatasets)[0], null);
 			}
-
-			// Mark interactive — UI renders now
-			initialized = true;
 
 			// STEP 4: Deferred — run validation after UI is painted
 			if (Object.keys(existingDatasets).length > 0) {
