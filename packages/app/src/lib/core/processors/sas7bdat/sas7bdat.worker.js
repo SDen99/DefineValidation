@@ -53,21 +53,19 @@ async function processSasFile(arrayBuffer, fileName) {
 		throw new Error('Pyodide not initialized');
 	}
 
-	try {
-		// Determine file extension for proper format detection
-		const isXpt = fileName.toLowerCase().endsWith('.xpt');
-		const extension = isXpt ? '.xpt' : '.sas7bdat';
-		const tempFile = `/tmpfile${extension}`;
-		const format = isXpt ? 'xport' : 'sas7bdat';
+	// Determine file extension for proper format detection
+	const isXpt = fileName.toLowerCase().endsWith('.xpt');
+	const extension = isXpt ? '.xpt' : '.sas7bdat';
+	const tempFile = `/tmpfile${extension}`;
+	const format = isXpt ? 'xport' : 'sas7bdat';
 
+	try {
 		// Write the input file to Pyodide's virtual filesystem
 		const uint8Array = new Uint8Array(arrayBuffer);
 		pyodide.FS.writeFile(tempFile, uint8Array);
 
-		// Now we'll run your Python code, with a few adjustments to work in Pyodide
 		const result = await pyodide.runPythonAsync(`
             import pandas as pd
-            import warnings
             import json
             import numpy as np
 
@@ -78,8 +76,6 @@ async function processSasFile(arrayBuffer, fileName) {
                     return int(obj)
                 if isinstance(obj, (np.floating, float)):
                     return float(obj)
-                if isinstance(obj, (np.ndarray, list)):
-                    return [x for x in obj] if hasattr(obj, 'tolist') else obj
                 if isinstance(obj, pd.Timestamp):
                     return obj.isoformat()
                 if pd.isna(obj):
@@ -87,42 +83,42 @@ async function processSasFile(arrayBuffer, fileName) {
                 raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
             try:
-                # Read the SAS file using pandas with appropriate format
                 df = pd.read_sas('${tempFile}', format='${format}')
-                df = df.where(pd.notnull(df), None)
-                
-                # Convert int32 columns to regular integers
-                for col in df.select_dtypes(include=['int32']).columns:
-                    df[col] = df[col].astype(int)
 
-                # Create the details dictionary with dataset information
+                # Decode bytes columns upfront (avoids per-value convert_bytes calls)
+                for col in df.select_dtypes(include=['object']).columns:
+                    df[col] = df[col].apply(
+                        lambda x: x.decode('utf-8', errors='ignore') if isinstance(x, bytes) else x
+                    )
+
+                # Batch int32 conversion in one operation (avoids DataFrame fragmentation)
+                int32_cols = df.select_dtypes(include=['int32']).columns.tolist()
+                if int32_cols:
+                    df = df.astype({col: int for col in int32_cols})
+
                 details = {
-                    'num_rows': int(df.shape[0]),  # Convert numpy.int64 to regular int
+                    'num_rows': int(df.shape[0]),
                     'num_columns': int(df.shape[1]),
                     'columns': df.columns.tolist(),
-                    'dtypes': df.dtypes.astype(str).to_dict(),
-                    'summary': df.describe().replace({np.nan: None}).to_dict(),
-                    'unique_values': {col: df[col].unique().tolist() 
-                                    for col in df.select_dtypes(include=['object']).columns}
+                    'dtypes': df.dtypes.astype(str).to_dict()
                 }
 
-                # Convert the data to JSON format
-                json_data = df.to_json(orient='records', date_format='iso', 
+                # to_json handles NaN->null natively, no need for df.where()
+                json_data = df.to_json(orient='records', date_format='iso',
                                      default_handler=convert_bytes)
-                                     
-                # Combine details and data into final result
-                result = json.dumps({'details': details, 'data': json_data}, 
+
+                # Return details dict + data as JSON string (single parse in JS)
+                result = json.dumps({'details': details, 'data': json_data},
                                   default=convert_bytes)
             except Exception as e:
                 result = json.dumps({'error': str(e)})
 
-            result  # Return the JSON string
+            result
         `);
 
 		// Parse the JSON string we got from Python
 		const parsedResult = JSON.parse(result);
 
-		// If there was an error in Python, throw it
 		if (parsedResult.error) {
 			throw new Error(parsedResult.error);
 		}

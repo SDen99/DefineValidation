@@ -22,6 +22,8 @@
 	let fileManager = $state<FileImportManager | null>(null);
 	let initialized = $state(false);
 	let initializationFailed = $state(false);
+	let isDragging = $state(false);
+	let dragCounter = 0;
 
 	// Expose appState on window in dev mode for console toggling
 	if (browser && dev) {
@@ -131,6 +133,60 @@
 		}
 	}
 
+	async function handleDroppedFiles(files: File[]) {
+		if (!fileManager) {
+			errorState.logWarning('File manager not available');
+			return;
+		}
+
+		const validFiles = files.filter((file) => {
+			const validation = fileManager.validateFile(file);
+			if (!validation.valid && validation.error) {
+				errorState.logWarning(validation.error);
+			}
+			return validation.valid;
+		});
+
+		if (validFiles.length) {
+			await Promise.allSettled(validFiles.map((file) => fileManager.processFile(file)));
+		}
+	}
+
+	function handleDragEnter(e: DragEvent) {
+		e.preventDefault();
+		dragCounter++;
+		if (e.dataTransfer?.types.includes('Files')) {
+			isDragging = true;
+		}
+	}
+
+	function handleDragLeave(e: DragEvent) {
+		e.preventDefault();
+		dragCounter--;
+		if (dragCounter <= 0) {
+			dragCounter = 0;
+			isDragging = false;
+		}
+	}
+
+	function handleDragOver(e: DragEvent) {
+		e.preventDefault();
+		if (e.dataTransfer) {
+			e.dataTransfer.dropEffect = 'copy';
+		}
+	}
+
+	function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		dragCounter = 0;
+		isDragging = false;
+
+		const files = e.dataTransfer?.files;
+		if (files?.length) {
+			handleDroppedFiles(Array.from(files));
+		}
+	}
+
 	async function loadSampleFile() {
 		if (!fileManager) {
 			errorState.logWarning('File manager not available');
@@ -163,6 +219,22 @@
 	class="hidden"
 />
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div
+	class="relative h-full"
+	ondragenter={handleDragEnter}
+	ondragleave={handleDragLeave}
+	ondragover={handleDragOver}
+	ondrop={handleDrop}
+>
+{#if isDragging}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+		<div class="rounded-xl border-2 border-dashed border-white/60 bg-white/10 px-12 py-10 text-center">
+			<p class="text-2xl font-semibold text-white">Drop files here</p>
+			<p class="mt-2 text-sm text-white/70">.sas7bdat, .xpt, .xml, .json, .yaml</p>
+		</div>
+	</div>
+{/if}
 <ThemeProvider>
 	{#if !browser}
 		<!-- SSR fallback -->
@@ -224,3 +296,4 @@
 		</div>
 	{/if}
 </ThemeProvider>
+</div>
