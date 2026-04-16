@@ -252,6 +252,9 @@
 		const firstViolation = violations[0];
 		selectDataset(firstViolation.datasetId);
 
+		// Set pending filter so dataset detail page applies it once the table loads
+		appState.pendingRuleFilter.value = ruleId;
+
 		// Switch to dataset view
 		appState.appView.value = 'datasets';
 	}

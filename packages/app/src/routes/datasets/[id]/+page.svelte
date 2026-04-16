@@ -6,6 +6,7 @@
 
 	// State management
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
+	import * as appState from '$lib/core/state/appState.svelte.ts';
 	import * as workerState from '$lib/core/state/workerState.svelte.ts';
 	import { startMetric, endMetric } from '$lib/utils/performanceMetrics.svelte';
 	import { selectDataset as orchestrateSelection } from '$lib/core/actions/selectionAction';
@@ -194,6 +195,48 @@
 			goto(url.pathname, { replaceState: true });
 		} catch (e) {
 			console.error('[DatasetDetail] Failed to apply filter from query params:', e);
+		}
+	});
+
+	// Apply filter from Rules page "View" button (pendingRuleFilter in appState)
+	$effect(() => {
+		const ruleId = appState.pendingRuleFilter.value;
+		if (!ruleId) return;
+
+		const ref = tableRefContext.ref;
+		if (!ref || !selectedDataset?.data || !currentDatasetId) return;
+
+		// Get violations for this rule in the current dataset
+		const violations = validationService.getViolationsByRule(ruleId);
+		const datasetViolations = violations.filter(v => v.datasetId === currentDatasetId);
+
+		// Consume the pending filter immediately
+		appState.pendingRuleFilter.value = null;
+
+		if (datasetViolations.length === 0) return;
+
+		const rows = selectedDataset.data as Record<string, unknown>[];
+
+		// Group affected values by column
+		const byColumn = new Map<string, Set<unknown>>();
+		for (const v of datasetViolations) {
+			const valueSet = byColumn.get(v.columnId) ?? new Set();
+			for (const rowIdx of v.affectedRows) {
+				if (rowIdx < rows.length) {
+					valueSet.add(rows[rowIdx][v.columnId]);
+				}
+			}
+			byColumn.set(v.columnId, valueSet);
+		}
+
+		ref.clearAllFilters();
+		for (const [columnId, values] of byColumn) {
+			ref.applyFilter(columnId, {
+				type: 'set',
+				columnId,
+				operator: 'in',
+				values: Array.from(values)
+			});
 		}
 	});
 

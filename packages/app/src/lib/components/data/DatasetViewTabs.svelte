@@ -5,6 +5,7 @@
 
 	// --- NEW ARCHITECTURE IMPORTS ---
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
+	import * as appState from '$lib/core/state/appState.svelte.ts';
 	import * as workerState from '$lib/core/state/workerState.svelte.ts';
 	import { startMetric, endMetric } from '$lib/utils/performanceMetrics.svelte';
 	import { validationService } from '$lib/services/validationService.svelte';
@@ -113,6 +114,43 @@
 			values: filterValues
 		});
 	}
+
+	// Apply filter from Rules page "View" button (pendingRuleFilter in appState)
+	$effect(() => {
+		const ruleId = appState.pendingRuleFilter.value;
+		if (!ruleId) return;
+		if (!clinicalTableRef || !selectedDataset?.data || !currentDatasetId) return;
+
+		const violations = validationService.getViolationsByRule(ruleId);
+		const datasetViolations = violations.filter(v => v.datasetId === currentDatasetId);
+
+		// Consume the pending filter
+		appState.pendingRuleFilter.value = null;
+
+		if (datasetViolations.length === 0) return;
+
+		const rows = selectedDataset.data as Record<string, unknown>[];
+		const byColumn = new Map<string, Set<unknown>>();
+		for (const v of datasetViolations) {
+			const valueSet = byColumn.get(v.columnId) ?? new Set();
+			for (const rowIdx of v.affectedRows) {
+				if (rowIdx < rows.length) {
+					valueSet.add(rows[rowIdx][v.columnId]);
+				}
+			}
+			byColumn.set(v.columnId, valueSet);
+		}
+
+		clinicalTableRef.clearAllFilters();
+		for (const [columnId, values] of byColumn) {
+			clinicalTableRef.applyFilter(columnId, {
+				type: 'set',
+				columnId,
+				operator: 'in',
+				values: Array.from(values)
+			});
+		}
+	});
 
 	const triggerClass =
 		'relative h-9 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground shadow-none transition-none hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:text-foreground data-[state=active]:shadow-none';

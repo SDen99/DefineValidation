@@ -68,6 +68,9 @@ export function setRuleTabFilters(tab: string, filters: RuleTabFilters) {
 	ruleFilters.value = { ...ruleFilters.value, [tab]: filters };
 }
 
+// Pending rule violation filter — set by Rules page "View" button, consumed by dataset detail page
+export const pendingRuleFilter = $state<{ value: string | null }>({ value: null });
+
 // View Mode State
 export const viewMode = $state<{ value: 'data' | 'metadata' }>({ value: 'data' });
 export const metadataViewMode = $state<{ value: 'table' | 'card' }>({ value: 'table' });
