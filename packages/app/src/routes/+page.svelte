@@ -7,7 +7,6 @@
 	import Footer from '$lib/components/Footer.svelte';
 	import DataXmlList from '$lib/components/data/DataXmlList.svelte';
 	import DatasetViewTabs from '$lib/components/data/DatasetViewTabs.svelte';
-	import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sden99/ui-components';
 	import EnhancedVariableList from '$lib/components/data/EnhancedVariableList.svelte';
 
 	// Rules view components
@@ -107,18 +106,9 @@
 		{#snippet rightbar()}
 			<div class="h-full">
 				{#if dataState.selectedDatasetId.value}
-					<Tabs value="variables" class="flex h-full flex-col">
-						<TabsList class="flex-shrink-0">
-							<TabsTrigger value="variables">Variables</TabsTrigger>
-						</TabsList>
-						<div class="flex-grow overflow-auto">
-							<TabsContent value="variables">
-								<div class="p-4">
-									<EnhancedVariableList bind:clinicalTableRef />
-								</div>
-							</TabsContent>
-						</div>
-					</Tabs>
+					<div class="h-full overflow-auto p-4">
+						<EnhancedVariableList bind:clinicalTableRef />
+					</div>
 				{:else}
 					<div class="p-4 text-center text-gray-500">
 						<p>Select a dataset to view variables</p>
