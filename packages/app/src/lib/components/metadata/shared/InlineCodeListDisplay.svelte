@@ -1,6 +1,5 @@
 <script lang="ts">
-	import type { CodeList } from '@sden99/cdisc-types/define-xml';
-	import type { DefineType } from '../../../core/state/metadata/editState.svelte';
+	import type { CodeList, DefineType } from '@sden99/cdisc-types/define-xml';
 
 	/**
 	 * InlineCodeListDisplay - View-only display of CodeList metadata

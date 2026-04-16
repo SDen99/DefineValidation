@@ -10,6 +10,7 @@
 	import { findDatasetOIDWithType } from '$lib/utils/datasetOIDLookup';
 	import { validationService } from '$lib/services/validationService.svelte';
 	import { selectDataset } from '$lib/core/actions/selectionAction';
+	import { logError } from '$lib/core/state/errorState.svelte';
 
 	// --- LOCAL COMPONENT STATE ---
 	let dialogOpen = $state(false);
@@ -96,12 +97,12 @@
 		isDeleting = true;
 		try {
 			await dataState.deleteDataset(datasetToDelete);
-		} catch (error) {
-			console.error('Dataset deletion failed:', error);
-		} finally {
-			isDeleting = false;
 			datasetToDelete = null;
 			dialogOpen = false;
+		} catch (error) {
+			logError(error, { dataset: datasetToDelete });
+		} finally {
+			isDeleting = false;
 		}
 	}
 

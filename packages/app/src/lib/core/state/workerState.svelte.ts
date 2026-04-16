@@ -32,6 +32,7 @@
 import { untrack } from 'svelte';
 import type { DataStateProvider } from './DataStateProvider';
 import { startMetric, endMetric } from '$lib/utils/performanceMetrics.svelte';
+import { logError } from '$lib/core/state/errorState.svelte';
 
 // ============================================
 // DEPENDENCY INJECTION
@@ -110,6 +111,8 @@ export function initializeWorker(worker: Worker) {
 		console.error('[workerState] Worker error:', error);
 		dataEngine.isProcessing = false;
 		dataEngine.isInitializing = false;
+		pendingSelection = null;
+		logError(error, { context: 'data-worker' });
 	};
 
 	if (pendingSelection) {
@@ -240,11 +243,6 @@ export function requestSortedRows(sortConfig: any[], visibleRange: { start: numb
 		}
 	};
 
-	console.log(`[workerState] Sending to worker:`, messagePayload);
-	debugSerializability(sortConfig, 'sortConfig');
-	debugSerializability(visibleRange, 'visibleRange');
-	debugSerializability(selectedId, 'datasetId');
-
 	try {
 		dataWorker.postMessage({
 			type: 'GET_SORTED_ROWS',
@@ -266,19 +264,6 @@ export function requestSortedRows(sortConfig: any[], visibleRange: { start: numb
 				}
 			});
 		}
-	}
-}
-
-function debugSerializability(obj: any, name: string) {
-	try {
-		const serialized = JSON.stringify(obj);
-		const parsed = JSON.parse(serialized);
-		console.log(`[DEBUG] ${name} is serializable:`, parsed);
-		return true;
-	} catch (error) {
-		console.error(`[DEBUG] ${name} is NOT serializable:`, error);
-		console.error(`[DEBUG] Problematic object:`, obj);
-		return false;
 	}
 }
 
@@ -375,6 +360,9 @@ export function cleanupWorker() {
 		dataWorker.terminate();
 		dataWorker = null;
 	}
+	pendingSelection = null;
+	dataEngine.isProcessing = false;
+	dataEngine.isInitializing = false;
 }
 
 // ============================================

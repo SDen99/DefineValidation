@@ -6,4 +6,3 @@
 
 export * from './defineDataAdapter';
 export * from './navigationHelpers';
-export * from './vlmTableTransform';

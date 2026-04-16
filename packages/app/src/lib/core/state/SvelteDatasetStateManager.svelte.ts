@@ -138,7 +138,7 @@ export class SvelteDatasetStateManager {
 			const rememberedTab = appState.getRememberedTabForDataset(datasetKey);
 			const firstAvailableView = this.getFirstAvailableView(availableViews);
 
-			let targetViewMode: 'data' | 'metadata' | 'VLM' | null = null;
+			let targetViewMode: 'data' | 'metadata' | null = null;
 
 			// Priority: 1) Remembered tab (if valid), 2) First available
 			if (rememberedTab && availableViews[rememberedTab]) {
@@ -425,10 +425,9 @@ export class SvelteDatasetStateManager {
 		data: boolean;
 		metadata: boolean;
 		VLM: boolean;
-	}): 'data' | 'metadata' | 'VLM' | null {
+	}): 'data' | 'metadata' | null {
 		if (views.data) return 'data';
 		if (views.metadata) return 'metadata';
-		if (views.VLM) return 'VLM';
 		return null;
 	}
 

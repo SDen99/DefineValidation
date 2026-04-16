@@ -1,12 +1,12 @@
 // packages/app/src/lib/core/services/StorageServices.ts
 
 // Define types based on your actual runes state structure
-interface UIPreferences {
+export interface UIPreferences {
 	leftSidebarOpen: boolean;
 	rightSidebarOpen: boolean;
 	leftSidebarWidth: number;
 	rightSidebarWidth: number;
-	viewMode: 'data' | 'metadata' | 'VLM';
+	viewMode: 'data' | 'metadata';
 	metadataViewMode: 'table' | 'card';
 	SDTM: boolean;
 	ADaM: boolean;
@@ -22,28 +22,16 @@ export interface SerializedMetadataViewState {
 	searchTerm: string;
 }
 
-export interface VLMViewState {
-	columnWidths: Record<string, number>;
-	columnOrder: string[];
-	columnVisibility: Record<string, boolean>;
-	expandedSections: string[];
-	paramcdFilter: string;
-}
-
-export interface SerializedVLMViewState {
-	columnWidths: Record<string, number>;
-	columnOrder: string[];
-	columnVisibility: Record<string, boolean>;
-	expandedSections: string[];
-	paramcdFilter: string;
-}
-
 // App persistent state interface
 export interface AppPersistentState {
 	uiPreferences: UIPreferences;
 	metadataViews: Record<string, SerializedMetadataViewState>;
-	vlmViews: Record<string, SerializedVLMViewState>;
-	themePreferences: any;
+	themePreferences: ThemePreferences;
+}
+
+export interface ThemePreferences {
+	mode: 'light' | 'dark' | 'system';
+	followSystem?: boolean;
 }
 
 export class StorageService {
@@ -89,9 +77,8 @@ export class StorageService {
 				SDTM: false,
 				ADaM: false
 			},
-			themePreferences: {},
-			metadataViews: {},
-			vlmViews: {}
+			themePreferences: { mode: 'system' },
+			metadataViews: {}
 		};
 	}
 
@@ -106,13 +93,27 @@ export class StorageService {
 
 			const parsed = JSON.parse(stored);
 
-			// Validate that the parsed data has the expected structure
 			if (!parsed || typeof parsed !== 'object') {
 				console.warn('Invalid stored state, using defaults');
 				return this.getDefaultState();
 			}
 
-			return { ...this.getDefaultState(), ...parsed };
+			const defaults = this.getDefaultState();
+
+			return {
+				uiPreferences:
+					parsed.uiPreferences && typeof parsed.uiPreferences === 'object'
+						? { ...defaults.uiPreferences, ...parsed.uiPreferences }
+						: defaults.uiPreferences,
+				themePreferences:
+					parsed.themePreferences && typeof parsed.themePreferences === 'object'
+						? { ...defaults.themePreferences, ...parsed.themePreferences }
+						: defaults.themePreferences,
+				metadataViews:
+					parsed.metadataViews && typeof parsed.metadataViews === 'object'
+						? parsed.metadataViews
+						: defaults.metadataViews
+			};
 		} catch (error) {
 			console.warn('Failed to parse stored state, using defaults:', error);
 			return this.getDefaultState();
@@ -141,99 +142,4 @@ export class StorageService {
 		return this.storageAvailable;
 	}
 
-	/**
-	 * Save VLM view state for a specific dataset
-	 */
-	public saveVLMViewState(datasetId: string, state: VLMViewState): void {
-		if (!this.storageAvailable) {
-			console.warn('[StorageService] Storage not available, skipping VLM view state save');
-			return;
-		}
-
-		try {
-			const serializedState: SerializedVLMViewState = {
-				columnWidths: { ...state.columnWidths },
-				columnOrder: [...state.columnOrder],
-				columnVisibility: { ...state.columnVisibility },
-				expandedSections: [...state.expandedSections],
-				paramcdFilter: state.paramcdFilter
-			};
-
-			const currentState = this.loadState();
-			currentState.vlmViews[datasetId] = serializedState;
-			this.saveState(currentState);
-
-			console.log(`[StorageService] Saved VLM view state for dataset: ${datasetId}`);
-		} catch (error) {
-			console.error('[StorageService] Error saving VLM view state:', error);
-		}
-	}
-
-	/**
-	 * Load VLM view state for a specific dataset
-	 */
-	public loadVLMViewState(datasetId: string): VLMViewState | null {
-		if (!this.storageAvailable) {
-			console.warn('[StorageService] Storage not available, returning null VLM view state');
-			return null;
-		}
-
-		try {
-			const state = this.loadState();
-			const vlmState = state.vlmViews[datasetId];
-
-			if (!vlmState) {
-				console.log(`[StorageService] No VLM view state found for dataset: ${datasetId}`);
-				return null;
-			}
-
-			const deserializedState: VLMViewState = {
-				columnWidths: { ...vlmState.columnWidths },
-				columnOrder: [...vlmState.columnOrder],
-				columnVisibility: { ...vlmState.columnVisibility },
-				expandedSections: [...vlmState.expandedSections],
-				paramcdFilter: vlmState.paramcdFilter || ''
-			};
-
-			console.log(`[StorageService] Loaded VLM view state for dataset: ${datasetId}`);
-			return deserializedState;
-		} catch (error) {
-			console.error('[StorageService] Error loading VLM view state:', error);
-			return null;
-		}
-	}
-
-	/**
-	 * Clear VLM view state for a specific dataset
-	 */
-	public clearVLMViewState(datasetId: string): void {
-		if (!this.storageAvailable) return;
-
-		try {
-			const currentState = this.loadState();
-			delete currentState.vlmViews[datasetId];
-			this.saveState(currentState);
-
-			console.log(`[StorageService] Cleared VLM view state for dataset: ${datasetId}`);
-		} catch (error) {
-			console.error('[StorageService] Error clearing VLM view state:', error);
-		}
-	}
-
-	/**
-	 * Clear all VLM view states
-	 */
-	public clearAllVLMViewStates(): void {
-		if (!this.storageAvailable) return;
-
-		try {
-			const currentState = this.loadState();
-			currentState.vlmViews = {};
-			this.saveState(currentState);
-
-			console.log('[StorageService] Cleared all VLM view states');
-		} catch (error) {
-			console.error('[StorageService] Error clearing all VLM view states:', error);
-		}
-	}
 }

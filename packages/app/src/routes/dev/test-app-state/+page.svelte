@@ -37,10 +37,6 @@
 		appState.setViewMode('metadata');
 
 		setTimeout(() => {
-			appState.setViewMode('VLM');
-		}, 1000);
-
-		setTimeout(() => {
 			appState.setViewMode('data');
 		}, 2000);
 	}
@@ -208,11 +204,11 @@
 				<div>
 					<span class="text-sm font-medium">Current View:</span>
 					<div class="mt-1 flex gap-2">
-						{#each ['data', 'metadata', 'VLM'] as mode}
+						{#each ['data', 'metadata'] as mode}
 							<Button
 								variant={currentViewMode === mode ? 'default' : 'outline'}
 								size="sm"
-								onclick={() => appState.setViewMode(mode as 'data' | 'metadata' | 'VLM')}
+								onclick={() => appState.setViewMode(mode as 'data' | 'metadata')}
 							>
 								{mode}
 							</Button>

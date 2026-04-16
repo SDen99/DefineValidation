@@ -1,6 +1,5 @@
 <script lang="ts">
-	import type { Comment } from '@sden99/cdisc-types/define-xml';
-	import type { DefineType } from '../../../core/state/metadata/editState.svelte';
+	import type { Comment, DefineType } from '@sden99/cdisc-types/define-xml';
 
 	/**
 	 * InlineCommentDisplay - View-only display of Comment metadata

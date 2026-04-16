@@ -7,9 +7,11 @@ import { DefineXMLProcessor } from '$lib/core/processors/defineXML/DefineXMLProc
 import { DatasetJsonProcessor } from '$lib/core/processors/datasetjson/DatasetJsonProcessor';
 import { YamlRuleProcessor } from '$lib/core/processors/yaml/YamlRuleProcessor';
 import type { WorkerPool } from '$lib/core/services/workerPool';
+import type { ProcessingResult } from '@sden99/data-processing/types';
 import { createDatasetFromProcessingResult as createDataset } from '@sden99/dataset-domain';
 
 import { ruleState } from '$lib/core/state/ruleState.svelte';
+import { logError } from '$lib/core/state/errorState.svelte';
 
 export const FILE_CONSTRAINTS = {
 	MAX_SIZE: 500 * 1024 * 1024,
@@ -116,7 +118,7 @@ export class FileImportManager {
 		}
 	}
 
-	private async handleProcessingSuccess(file: File, result: any) {
+	private async handleProcessingSuccess(file: File, result: ProcessingResult) {
 		const datasetService = this.serviceContainer.getDatasetService();
 
 		const domainDataset = createDataset(file, result);
@@ -160,5 +162,6 @@ export class FileImportManager {
 	private handleProcessingError(file: File, error: unknown) {
 		const finalError = error instanceof Error ? error : new Error(String(error));
 		dataState.setLoadingError(file.name, finalError);
+		logError(finalError, { fileName: file.name });
 	}
 }

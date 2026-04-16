@@ -24,6 +24,7 @@ export class WorkerPool {
 	private idleTimeout: number;
 	private isInitialized: boolean = false;
 	private workerFactory: () => Worker;
+	private cleanupIntervalId: ReturnType<typeof setInterval> | null = null;
 
 	constructor(config: WorkerPoolConfig) {
 		this.maxWorkers = config.maxWorkers ?? getDefaultWorkerCount();
@@ -38,7 +39,7 @@ export class WorkerPool {
 		}
 
 		// Set up cleanup interval only in browser context
-		setInterval(() => this.cleanupIdleWorkers(), 10000);
+		this.cleanupIntervalId = setInterval(() => this.cleanupIdleWorkers(), 10000);
 		this.isInitialized = true;
 	}
 
@@ -75,7 +76,12 @@ export class WorkerPool {
 					reject(error);
 				});
 
-				worker.onmessage = (e) => this.handleWorkerMessage(e, managedWorker);
+				// Permanent handler uses addEventListener to avoid overwriting initListener
+				worker.addEventListener('message', (e) => {
+					if (managedWorker.pyodideReady) {
+						this.handleWorkerMessage(e, managedWorker);
+					}
+				});
 			} catch (error) {
 				console.error('Failed to create worker:', error);
 				reject(error);
@@ -99,11 +105,16 @@ export class WorkerPool {
 		}
 
 		if (!worker) {
-			// Wait for a worker to become available
-			return new Promise((resolve) => {
+			// Wait for a worker to become available (with 30s timeout)
+			return new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					clearInterval(checkInterval);
+					reject(new Error('WorkerPool: timed out waiting for available worker'));
+				}, 30000);
 				const checkInterval = setInterval(() => {
 					const availableWorker = this.workers.find((w) => !w.busy && w.pyodideReady);
 					if (availableWorker) {
+						clearTimeout(timeout);
 						clearInterval(checkInterval);
 						resolve(availableWorker);
 					}
@@ -117,8 +128,16 @@ export class WorkerPool {
 	private handleWorkerError(e: ErrorEvent, managedWorker: ManagedWorker) {
 		console.error('Worker error:', e);
 		managedWorker.busy = false;
-		// Don't process next task immediately after an error
-		// Let the error propagate first
+
+		// Find and reject the current task for this worker
+		const taskIndex = this.taskQueue.findIndex((t) => t.id);
+		if (taskIndex >= 0) {
+			const task = this.taskQueue[taskIndex];
+			task.reject(new Error(`Worker error: ${e.message}`));
+			this.taskQueue.splice(taskIndex, 1);
+		}
+
+		this.processNextTask();
 	}
 
 	private async processNextTask() {
@@ -249,11 +268,24 @@ export class WorkerPool {
 	}
 
 	public dispose(): Promise<void> {
+		// Reject all pending tasks
+		for (const task of this.taskQueue) {
+			task.reject(new Error('WorkerPool disposed'));
+		}
+		this.taskQueue = [];
+
+		// Terminate all workers
 		this.workers.forEach((worker) => {
 			worker.worker.terminate();
 		});
 		this.workers = [];
-		this.taskQueue = [];
+
+		// Clear cleanup interval
+		if (this.cleanupIntervalId) {
+			clearInterval(this.cleanupIntervalId);
+			this.cleanupIntervalId = null;
+		}
+
 		this.isInitialized = false;
 		return Promise.resolve();
 	}

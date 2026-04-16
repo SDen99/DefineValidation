@@ -1,7 +1,7 @@
 import * as dataState from '$lib/core/state/dataState.svelte.ts';
 import * as appState from '$lib/core/state/appState.svelte.ts';
 import { normalizeDatasetId as normalize } from '@sden99/dataset-domain';
-import { startMetric, endMetric, startSession, endSession } from '$lib/utils/performanceMetrics.svelte';
+import { logWarning } from '$lib/core/state/errorState.svelte';
 
 /**
  * Finds the source file and domain for a given name.
@@ -13,38 +13,28 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 	const allDatasets = dataState.getDatasets();
 	const datasetKeys = Object.keys(allDatasets);
 
-	console.warn(`[findSource] input='${name}', normalized='${normalizedName}', datasetKeys=`, datasetKeys);
-
 	// First, check for a direct data file match via the originalFilenames map
-	// (normalized key → original filename like "adpc.sas7bdat")
 	const originalFilename = dataState.getOriginalFilename(normalizedName);
-	console.warn(`[findSource] getOriginalFilename('${normalizedName}') =`, originalFilename);
 	if (originalFilename && allDatasets[originalFilename]) {
-		console.warn(`[findSource] MATCH via originalFilename: fileId='${originalFilename}', domain='${normalizedName}'`);
 		return { fileId: originalFilename, domain: normalizedName };
 	}
 
 	// Also check if the raw name or normalized name exists as a dataset key
 	if (allDatasets[name]) {
-		console.warn(`[findSource] MATCH via raw key: fileId='${name}'`);
 		return { fileId: name, domain: normalizedName };
 	}
 	if (allDatasets[normalizedName]) {
-		console.warn(`[findSource] MATCH via normalized key: fileId='${normalizedName}'`);
 		return { fileId: normalizedName, domain: normalizedName };
 	}
 
 	// Fallback: scan all dataset keys and match by normalized form
-	// Catches .xpt/.sas7bdat files even if originalFilenames map wasn't populated
 	const matchingKey = datasetKeys.find(
 		(key) => normalize(key) === normalizedName && key !== 'define.xml'
 	);
 	if (matchingKey) {
-		console.warn(`[findSource] MATCH via key scan: fileId='${matchingKey}', domain='${normalizedName}'`);
 		return { fileId: matchingKey, domain: normalizedName };
 	}
 
-	console.warn(`[findSource] No data file found, checking Define-XML...`);
 	// No data file found — check Define-XML for metadata-only domains
 	const { SDTM, ADaM, sdtmId, adamId } = dataState.getDefineXmlInfo();
 
@@ -52,10 +42,7 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 		(g) => normalize(g.SASDatasetName || g.Name) === normalizedName
 	);
 	if (adamGroup) {
-		if (!adamId) {
-			console.warn(`[SelectionAction] Found domain '${normalizedName}' in ADaM but adamId is null`);
-			return null;
-		}
+		if (!adamId) return null;
 		const originalName = adamGroup.SASDatasetName || adamGroup.Name || normalizedName;
 		return { fileId: adamId, domain: originalName };
 	}
@@ -64,10 +51,7 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 		(g) => normalize(g.SASDatasetName || g.Name) === normalizedName
 	);
 	if (sdtmGroup) {
-		if (!sdtmId) {
-			console.warn(`[SelectionAction] Found domain '${normalizedName}' in SDTM but sdtmId is null`);
-			return null;
-		}
+		if (!sdtmId) return null;
 		const originalName = sdtmGroup.SASDatasetName || sdtmGroup.Name || normalizedName;
 		return { fileId: sdtmId, domain: originalName };
 	}
@@ -77,84 +61,33 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 
 /**
  * The single, authoritative function for handling a dataset selection.
- * This version correctly uses the state as you intended.
- * Now instrumented with performance metrics.
  */
 export function selectDataset(datasetName: string | null) {
-	// Start overall session tracking
-	const sessionId = `dataset-switch-${datasetName || 'null'}-${Date.now()}`;
-	startSession(sessionId);
-	startMetric('total-selection', 'selection', { datasetName });
-
-	console.warn(`[SelectionAction] selectDataset called with: '${datasetName}'`);
+	console.warn(`[SelectionAction] selectDataset: '${datasetName}'`);
 
 	if (datasetName === null) {
 		dataState.selectDatasetWithWorker(null, null);
-		endMetric('total-selection', 'selection');
-		endSession();
 		return;
 	}
 
-	// Track dataset lookup time
-	startMetric('find-source', 'selection', { datasetName });
 	const source = findSource(datasetName);
-	endMetric('find-source', 'selection', { found: !!source });
 
 	if (source) {
-		console.warn(`[SelectionAction] Resolved: fileId='${source.fileId}', domain='${source.domain}'`);
-		const ds = dataState.getDatasets()[source.fileId];
-		console.warn(`[SelectionAction] Dataset at fileId:`, ds ? { hasData: !!ds.data, dataIsArray: Array.isArray(ds.data), dataLength: Array.isArray(ds.data) ? ds.data.length : 'N/A', fileName: ds.fileName } : 'NOT FOUND');
-
-		// Track state update time
-		startMetric('state-update', 'selection', { fileId: source.fileId, domain: source.domain });
 		dataState.selectDatasetWithWorker(source.fileId, source.domain);
-		endMetric('state-update', 'selection');
 
-		// Track view resolution time
-		startMetric('view-resolution', 'selection');
+		// Preserve current view if it's still available, otherwise fallback
 		const availableViews = dataState.getAvailableViews();
 		const currentViewMode = appState.viewMode.value;
 
-		console.log(`[SelectionAction] Available views:`, availableViews);
-		console.log(`[SelectionAction] Current view mode:`, currentViewMode);
-
-		// Preserve current view if it's still available, otherwise fallback
-		if (availableViews[currentViewMode]) {
-			console.log(`[SelectionAction] Keeping current view mode: ${currentViewMode}`);
-		} else {
-			if (availableViews.VLM) {
-				console.log(`[SelectionAction] Switching to VLM view (current not available)`);
-				appState.setViewMode('VLM');
-			} else if (availableViews.data) {
-				console.log(`[SelectionAction] Switching to data view (current not available)`);
+		if (!availableViews[currentViewMode]) {
+			if (availableViews.data) {
 				appState.setViewMode('data');
 			} else if (availableViews.metadata) {
-				console.log(`[SelectionAction] Switching to metadata view (current not available)`);
 				appState.setViewMode('metadata');
-			} else {
-				console.log(
-					`[SelectionAction] No views available, keeping current mode: ${currentViewMode}`
-				);
 			}
 		}
-		endMetric('view-resolution', 'selection', {
-			currentViewMode,
-			availableViews: Object.keys(availableViews).filter(k => availableViews[k as keyof typeof availableViews])
-		});
 	} else {
-		console.warn(
-			`[SelectionAction] Could not resolve a file for '${datasetName}'. Selection aborted.`
-		);
-	}
-
-	endMetric('total-selection', 'selection');
-	const session = endSession();
-
-	// Log session summary
-	if (session) {
-		console.log(`[SelectionAction] ⏱️ Performance Summary:`, {
-			totalTime: `${session.totalDuration?.toFixed(2)}ms`,
-			steps: session.metrics.map(m => `${m.name}: ${m.duration?.toFixed(2)}ms`)
-		});
+		console.warn(`[SelectionAction] Could not resolve a file for '${datasetName}'.`);
+		logWarning(`Dataset '${datasetName}' could not be found.`);
 	}
 }

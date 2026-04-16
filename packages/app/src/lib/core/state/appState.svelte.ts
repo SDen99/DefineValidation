@@ -42,11 +42,11 @@ export const editHistorySidebarWidth = $state<{ value: number }>({ value: 288 })
 export const appView = $state<{ value: 'datasets' | 'rules' }>({ value: 'datasets' });
 
 // View Mode State
-export const viewMode = $state<{ value: 'data' | 'metadata' | 'VLM' }>({ value: 'data' });
+export const viewMode = $state<{ value: 'data' | 'metadata' }>({ value: 'data' });
 export const metadataViewMode = $state<{ value: 'table' | 'card' }>({ value: 'table' });
 
 // Per-dataset tab memory - remembers last active tab for each dataset
-export const datasetTabMemory = $state<{ value: Record<string, 'data' | 'metadata' | 'VLM'> }>({
+export const datasetTabMemory = $state<{ value: Record<string, 'data' | 'metadata'> }>({
 	value: {}
 });
 
@@ -138,24 +138,27 @@ export function setTheme(newTheme: 'light' | 'dark' | 'system') {
 	};
 }
 
-export function restorePreferences(preferences: any) {
-	// Restore theme if available
-	if (preferences.theme) {
-		setTheme(preferences.theme);
+export function restorePreferences(prefs: Partial<{
+	theme: 'light' | 'dark' | 'system';
+	leftSidebarOpen: boolean;
+	rightSidebarOpen: boolean;
+	leftSidebarWidth: number;
+	rightSidebarWidth: number;
+}>) {
+	if (prefs.theme && ['light', 'dark', 'system'].includes(prefs.theme)) {
+		setTheme(prefs.theme);
 	}
-
-	// Restore sidebar states if available
-	if (preferences.leftSidebarOpen !== undefined) {
-		leftSidebarOpen.value = preferences.leftSidebarOpen;
+	if (typeof prefs.leftSidebarOpen === 'boolean') {
+		leftSidebarOpen.value = prefs.leftSidebarOpen;
 	}
-	if (preferences.rightSidebarOpen !== undefined) {
-		rightSidebarOpen.value = preferences.rightSidebarOpen;
+	if (typeof prefs.rightSidebarOpen === 'boolean') {
+		rightSidebarOpen.value = prefs.rightSidebarOpen;
 	}
-	if (preferences.leftSidebarWidth !== undefined) {
-		leftSidebarWidth.value = preferences.leftSidebarWidth;
+	if (typeof prefs.leftSidebarWidth === 'number') {
+		leftSidebarWidth.value = prefs.leftSidebarWidth;
 	}
-	if (preferences.rightSidebarWidth !== undefined) {
-		rightSidebarWidth.value = preferences.rightSidebarWidth;
+	if (typeof prefs.rightSidebarWidth === 'number') {
+		rightSidebarWidth.value = prefs.rightSidebarWidth;
 	}
 }
 
@@ -194,7 +197,7 @@ export function updateSidebarWidth(side: 'left' | 'right', width: number) {
 // VIEW MODE ACTIONS
 // ============================================
 
-export function setViewMode(mode: 'data' | 'metadata' | 'VLM', datasetKey?: string) {
+export function setViewMode(mode: 'data' | 'metadata', datasetKey?: string) {
 	console.log(`appState.setViewMode: ${mode}`, datasetKey ? `for dataset: ${datasetKey}` : '');
 	viewMode.value = mode;
 
@@ -292,7 +295,7 @@ export function restoreAppState(savedState: {
 	rightSidebarWidth?: number;
 	editHistorySidebarOpen?: boolean;
 	editHistorySidebarWidth?: number;
-	viewMode?: 'data' | 'metadata' | 'VLM';
+	viewMode?: 'data' | 'metadata';
 	metadataViewMode?: 'table' | 'card';
 	theme?: typeof theme.value;
 	preferences?: typeof preferences.value;
@@ -364,7 +367,8 @@ export function resetAppState() {
 		autoSave: true,
 		debugMode: false,
 		showTooltips: true,
-		animationsEnabled: true
+		animationsEnabled: true,
+		showPerformanceDashboard: false
 	};
 }
 
@@ -435,7 +439,7 @@ export function getUIPreferencesSnapshot(datasets: Record<string, any>) {
 // LAYOUT COORDINATION FUNCTIONS
 // ============================================
 
-export function handleViewModeChange(newMode: 'data' | 'metadata' | 'VLM', datasetKey?: string) {
+export function handleViewModeChange(newMode: 'data' | 'metadata', datasetKey?: string) {
 	setViewMode(newMode, datasetKey);
 
 	// Auto-close right sidebar for non-data views
@@ -444,7 +448,7 @@ export function handleViewModeChange(newMode: 'data' | 'metadata' | 'VLM', datas
 	}
 }
 
-export function getRememberedTabForDataset(datasetKey: string): 'data' | 'metadata' | 'VLM' | null {
+export function getRememberedTabForDataset(datasetKey: string): 'data' | 'metadata' | null {
 	return datasetTabMemory.value[datasetKey] || null;
 }
 

@@ -1,6 +1,5 @@
 <script lang="ts">
-	import type { Method } from '@sden99/cdisc-types/define-xml';
-	import type { DefineType } from '../../../core/state/metadata/editState.svelte';
+	import type { Method, DefineType } from '@sden99/cdisc-types/define-xml';
 
 	/**
 	 * InlineMethodDisplay - View-only display of Method metadata

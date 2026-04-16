@@ -251,7 +251,7 @@ export interface ValidationEngineError {
   /** The rule that encountered the error */
   ruleId: string;
   /** Category of error */
-  type: 'unknown_operator' | 'unknown_condition' | 'missing_column' | 'invalid_operand';
+  type: 'unknown_operator' | 'unknown_condition' | 'missing_column' | 'invalid_operand' | 'execution';
   /** Human-readable description */
   message: string;
 }
