@@ -258,6 +258,19 @@
 	</div>
 {/if}
 <ThemeProvider>
+	<!-- POC watermark overlay — covers entire viewport, non-interactive -->
+	<div class="pointer-events-none fixed inset-0 z-[9999] overflow-hidden" aria-hidden="true">
+		<div class="absolute inset-[-50%] flex flex-wrap items-center justify-center gap-x-24 gap-y-16"
+			style="transform: rotate(-30deg); width: 200%; height: 200%;"
+		>
+			{#each Array(60) as _}
+				<span class="text-foreground/[0.04] select-none whitespace-nowrap text-2xl font-semibold tracking-widest">
+					PROOF OF CONCEPT &ndash; NOT VALIDATED
+				</span>
+			{/each}
+		</div>
+	</div>
+
 	{#if !browser}
 		<!-- SSR fallback -->
 		<div class="flex h-screen items-center justify-center">
