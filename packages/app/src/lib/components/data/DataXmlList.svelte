@@ -124,48 +124,50 @@
 		<Input type="text" placeholder="Search datasets..." bind:value={searchTerm} class="pl-9" />
 	</div>
 
-	<ScrollArea class="h-[calc(100vh-18rem)]">
-		<div class="px-3">
-			<div class="space-y-2">
-				{#each activeLoads as load (load.fileName)}
-					<div class="bg-muted/50 border-border rounded-lg border px-3 py-2.5">
-						<div class="flex items-center gap-2">
-							<Loader2 class="text-muted-foreground h-3.5 w-3.5 animate-spin" />
-							<span class="text-muted-foreground truncate text-sm font-medium">{load.fileName}</span>
+	<div class="min-h-0 flex-1">
+		<ScrollArea class="h-full">
+			<div class="px-3">
+				<div class="space-y-2">
+					{#each activeLoads as load (load.fileName)}
+						<div class="bg-muted/50 border-border rounded-lg border px-3 py-2.5">
+							<div class="flex items-center gap-2">
+								<Loader2 class="text-muted-foreground h-3.5 w-3.5 animate-spin" />
+								<span class="text-muted-foreground truncate text-sm font-medium">{load.fileName}</span>
+							</div>
+							<div class="bg-border mt-2 h-1.5 overflow-hidden rounded-full">
+								<div
+									class="bg-info h-full rounded-full transition-[width] duration-500 ease-out"
+									style="width: {Math.round(load.progress)}%"
+								></div>
+							</div>
 						</div>
-						<div class="bg-border mt-2 h-1.5 overflow-hidden rounded-full">
-							<div
-								class="bg-info h-full rounded-full transition-[width] duration-500 ease-out"
-								style="width: {Math.round(load.progress)}%"
-							></div>
-						</div>
-					</div>
-				{/each}
-				{#if cardProps.length > 0}
-					{#each cardProps as props (props.id)}
-						<DatasetCardItem
-							datasetId={props.originalName}
-							displayName={props.displayName}
-							datasetState={props.state}
-							metadata={props.metadata}
-							isSelected={props.isSelected}
-							validationIssueCount={props.validationIssueCount}
-							onDelete={() => handleDeleteClick(props.originalName)}
-							onClick={() => handleDatasetClick(props.originalName)}
-						/>
 					{/each}
-				{:else if searchTerm}
-					<div class="text-muted-foreground flex h-[150px] items-center justify-center">
-						<p>No datasets match '{searchTerm}'</p>
-					</div>
-				{:else}
-					<div class="text-muted-foreground flex h-[150px] items-center justify-center">
-						<p>No datasets available.</p>
-					</div>
-				{/if}
+					{#if cardProps.length > 0}
+						{#each cardProps as props (props.id)}
+							<DatasetCardItem
+								datasetId={props.originalName}
+								displayName={props.displayName}
+								datasetState={props.state}
+								metadata={props.metadata}
+								isSelected={props.isSelected}
+								validationIssueCount={props.validationIssueCount}
+								onDelete={() => handleDeleteClick(props.originalName)}
+								onClick={() => handleDatasetClick(props.originalName)}
+							/>
+						{/each}
+					{:else if searchTerm}
+						<div class="text-muted-foreground flex h-[150px] items-center justify-center">
+							<p>No datasets match '{searchTerm}'</p>
+						</div>
+					{:else}
+						<div class="text-muted-foreground flex h-[150px] items-center justify-center">
+							<p>No datasets available.</p>
+						</div>
+					{/if}
+				</div>
 			</div>
-		</div>
-	</ScrollArea>
+		</ScrollArea>
+	</div>
 </div>
 
 <ConfirmationDialog

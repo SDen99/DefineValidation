@@ -104,17 +104,13 @@
 		{/snippet}
 
 		{#snippet rightbar()}
-			<div class="h-full">
-				{#if dataState.selectedDatasetId.value}
-					<div class="h-full overflow-auto p-4">
-						<EnhancedVariableList bind:clinicalTableRef />
-					</div>
-				{:else}
-					<div class="p-4 text-center text-gray-500">
-						<p>Select a dataset to view variables</p>
-					</div>
-				{/if}
-			</div>
+			{#if dataState.selectedDatasetId.value}
+				<EnhancedVariableList bind:clinicalTableRef />
+			{:else}
+				<div class="text-center text-gray-500">
+					<p>Select a dataset to view variables</p>
+				</div>
+			{/if}
 		{/snippet}
 
 		{#snippet footer()}

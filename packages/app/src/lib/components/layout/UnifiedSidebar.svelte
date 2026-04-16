@@ -162,7 +162,7 @@
 				{/if}
 
 				<!-- Main Content Section -->
-				<div class="flex-1 overflow-y-auto px-4 pb-4">
+				<div class="flex min-h-0 flex-1 flex-col p-4">
 					{#if isEmpty && emptyState}
 						<!-- Empty State -->
 						<div class="flex h-full items-center justify-center">

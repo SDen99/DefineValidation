@@ -116,41 +116,52 @@
 
 	const triggerClass =
 		'relative h-9 rounded-none border-b-2 border-b-transparent bg-transparent px-4 pb-3 pt-2 font-semibold text-muted-foreground shadow-none transition-none hover:text-foreground data-[state=active]:border-b-primary data-[state=active]:text-foreground data-[state=active]:shadow-none';
+
+	let tableContainerHeight = $state(600);
+
+	const datasetDisplayName = $derived.by(() => {
+		const name = dataState.selectedDomain.value || dataState.selectedDatasetId.value;
+		if (!name) return 'Dataset';
+		const metadata = dataState.getItemGroupMetadata(name);
+		return metadata?.Name || name.toUpperCase();
+	});
 </script>
 
 <div class="bg-card dark:bg-background/90 flex h-full w-full flex-col rounded-md border">
 	<Tabs value="data" class="flex flex-grow flex-col">
 		<TabsList
-			class="from-background to-muted/30 w-full flex-none justify-start border-b bg-gradient-to-r px-4"
+			class="h-auto w-full flex-none justify-start rounded-none border-b border-border bg-transparent px-4 py-3"
 		>
-			<TabsTrigger value="data" class={triggerClass}>Dataset</TabsTrigger>
+			<TabsTrigger value="data" class={triggerClass}>{datasetDisplayName}</TabsTrigger>
 		</TabsList>
 
-		<TabsContent value="data" class="flex-grow overflow-hidden">
+		<TabsContent value="data" class="mt-0 flex-grow overflow-hidden">
 			{#if selectedDataset?.data && Array.isArray(selectedDataset.data) && currentDatasetId}
-				<ClinicalDataTableV3
-					bind:this={clinicalTableRef}
-					workerState={workerState.getWorkerStateInterface()}
-					dataState={dataState}
-					datasetId={currentDatasetId}
-					height="calc(100vh - 250px)"
-					enableCdiscPriority={false}
-					emergencyColumnCount={5}
-					showChartFilters={true}
-					chartFilterHeight={90}
-					{datasetDetails}
-					{defineVariables}
-					validationResults={validationResultsMap}
-					onValidationBadgeClick={handleValidationBadgeClick}
-					initialFilters={tablePersistedState.filters}
-					initialSort={tablePersistedState.sort}
-					initialColumnWidths={tablePersistedState.columnWidths}
-					onFilterChange={handleTableFilterChange}
-					onSortChange={handleTableSortChange}
-					onColumnWidthChange={handleTableWidthChange}
-					onMetricStart={startMetric}
-					onMetricEnd={endMetric}
-				/>
+				<div class="h-full w-full" bind:clientHeight={tableContainerHeight}>
+					<ClinicalDataTableV3
+						bind:this={clinicalTableRef}
+						workerState={workerState.getWorkerStateInterface()}
+						dataState={dataState}
+						datasetId={currentDatasetId}
+						height={tableContainerHeight}
+						enableCdiscPriority={false}
+						emergencyColumnCount={5}
+						showChartFilters={true}
+						chartFilterHeight={90}
+						{datasetDetails}
+						{defineVariables}
+						validationResults={validationResultsMap}
+						onValidationBadgeClick={handleValidationBadgeClick}
+						initialFilters={tablePersistedState.filters}
+						initialSort={tablePersistedState.sort}
+						initialColumnWidths={tablePersistedState.columnWidths}
+						onFilterChange={handleTableFilterChange}
+						onSortChange={handleTableSortChange}
+						onColumnWidthChange={handleTableWidthChange}
+						onMetricStart={startMetric}
+						onMetricEnd={endMetric}
+					/>
+				</div>
 			{:else}
 				<div class="text-muted-foreground p-4">
 					<p>No tabular data is available for the selected item.</p>
