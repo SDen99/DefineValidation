@@ -3,6 +3,8 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import Download from '@lucide/svelte/icons/download';
 	import Eye from '@lucide/svelte/icons/eye';
+	import Search from '@lucide/svelte/icons/search';
+	import X from '@lucide/svelte/icons/x';
 	import {
 		Button,
 		Badge,
@@ -13,10 +15,17 @@
 		Alert,
 		AlertDescription,
 		AlertTitle,
+		Input,
 		Tabs,
 		TabsList,
 		TabsTrigger
 	} from '@sden99/ui-components';
+	import {
+		DropdownMenu,
+		DropdownMenuTrigger,
+		DropdownMenuContent,
+		DropdownMenuCheckboxItem
+	} from '$lib/components/core/dropdown-menu';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import ViewSwitcher from '$lib/components/layout/ViewSwitcher.svelte';
 	import StorageBadge from '$lib/components/layout/StorageBadge.svelte';
@@ -33,6 +42,7 @@
 	import * as errorState from '$lib/core/state/errorState.svelte.ts';
 	import * as appState from '$lib/core/state/appState.svelte.ts';
 	import { selectDataset } from '$lib/core/actions/selectionAction';
+	import { untrack } from 'svelte';
 	import type { Rule } from '@sden99/validation-engine';
 
 	let { data } = $props();
@@ -78,11 +88,115 @@
 
 	let allRules = $derived([...autoRules, ...importedRules]);
 
-	let displayedRules = $derived.by(() => {
+	// Filter state with per-tab persistence
+	let searchTerm = $state('');
+	let selectedRuleTypes = $state<Set<string>>(new Set());
+	let selectedDomains = $state<Set<string>>(new Set());
+	let selectedTargetVars = $state<Set<string>>(new Set());
+	let violationsOnly = $state(false);
+
+	// Restore filters when tab changes (only tracks activeTab, not ruleFilters)
+	$effect(() => {
+		const tab = activeTab;
+		untrack(() => {
+			const filters = appState.getRuleTabFilters(tab);
+			searchTerm = filters.searchTerm;
+			selectedRuleTypes = new Set(filters.ruleTypes);
+			selectedDomains = new Set(filters.domains);
+			selectedTargetVars = new Set(filters.targetVars);
+			violationsOnly = filters.violationsOnly;
+		});
+	});
+
+	// Persist filters when they change
+	$effect(() => {
+		const snapshot = {
+			searchTerm,
+			ruleTypes: [...selectedRuleTypes],
+			domains: [...selectedDomains],
+			targetVars: [...selectedTargetVars],
+			violationsOnly
+		};
+		untrack(() => appState.setRuleTabFilters(activeTab, snapshot));
+	});
+
+	// Tab-filtered rules (before additional filters)
+	const tabFilteredRules = $derived.by(() => {
 		if (activeTab === 'imported') return importedRules;
 		if (activeTab === 'auto') return autoRules;
 		return allRules;
 	});
+
+	// Unique filter options from tab-filtered rules
+	const uniqueRuleTypes = $derived([...new Set(tabFilteredRules.map(r => r.Rule_Type))].sort());
+
+	const uniqueDomains = $derived.by(() => {
+		const domains = new Set<string>();
+		for (const rule of tabFilteredRules) {
+			rule.Scope?.Domains?.Include?.forEach((d: string) => { if (d !== 'ALL') domains.add(d); });
+		}
+		return [...domains].sort();
+	});
+
+	const uniqueTargetVars = $derived.by(() => {
+		const vars = new Set<string>();
+		for (const rule of tabFilteredRules) {
+			if (rule.Target_Variable) vars.add(rule.Target_Variable);
+		}
+		return [...vars].sort();
+	});
+
+	// Apply all filters on top of tab-filtered rules
+	let displayedRules = $derived.by(() => {
+		let rules = tabFilteredRules;
+
+		if (searchTerm.trim()) {
+			const term = searchTerm.toLowerCase();
+			rules = rules.filter(r =>
+				r.Core.Id.toLowerCase().includes(term) ||
+				r.Description.toLowerCase().includes(term) ||
+				(r.Target_Variable?.toLowerCase().includes(term))
+			);
+		}
+		if (selectedRuleTypes.size > 0)
+			rules = rules.filter(r => selectedRuleTypes.has(r.Rule_Type));
+		if (selectedDomains.size > 0)
+			rules = rules.filter(r => {
+				const inc = r.Scope?.Domains?.Include;
+				if (!inc) return false;
+				if (inc.includes('ALL')) return true;
+				return inc.some((d: string) => selectedDomains.has(d));
+			});
+		if (selectedTargetVars.size > 0)
+			rules = rules.filter(r => r.Target_Variable && selectedTargetVars.has(r.Target_Variable));
+		if (violationsOnly)
+			rules = rules.filter(r => violationsByRule.has(r.Core.Id));
+
+		return rules;
+	});
+
+	// Filter helpers
+	function toggleSetItem(set: Set<string>, item: string): Set<string> {
+		const next = new Set(set);
+		if (next.has(item)) next.delete(item); else next.add(item);
+		return next;
+	}
+
+	function clearAllFilters() {
+		searchTerm = '';
+		selectedRuleTypes = new Set();
+		selectedDomains = new Set();
+		selectedTargetVars = new Set();
+		violationsOnly = false;
+	}
+
+	const hasActiveFilters = $derived(
+		searchTerm.trim() !== '' ||
+		selectedRuleTypes.size > 0 ||
+		selectedDomains.size > 0 ||
+		selectedTargetVars.size > 0 ||
+		violationsOnly
+	);
 
 	// Violation counts per rule (reactive — updates when validation results change)
 	let violationsByRule = $derived.by(() => {
@@ -251,6 +365,105 @@
 					<TabsTrigger value="imported">Imported ({importedRules.length})</TabsTrigger>
 				</TabsList>
 			</Tabs>
+
+			<!-- Filter bar -->
+			<div class="mb-4 flex flex-wrap items-center gap-3">
+				<!-- Search input -->
+				<div class="relative min-w-[200px] flex-1">
+					<Search class="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
+					<Input type="text" placeholder="Search rules..." bind:value={searchTerm} class="pl-9" />
+				</div>
+
+				<!-- Rule Type dropdown -->
+				<DropdownMenu>
+					<DropdownMenuTrigger>
+						<Button variant="outline" size="sm" class="gap-1.5">
+							Rule Type
+							{#if selectedRuleTypes.size > 0}
+								<Badge variant="secondary" class="ml-1">{selectedRuleTypes.size}</Badge>
+							{/if}
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						{#each uniqueRuleTypes as ruleType}
+							<DropdownMenuCheckboxItem
+								checked={selectedRuleTypes.has(ruleType)}
+								onCheckedChange={() => selectedRuleTypes = toggleSetItem(selectedRuleTypes, ruleType)}
+							>
+								{ruleType}
+							</DropdownMenuCheckboxItem>
+						{/each}
+					</DropdownMenuContent>
+				</DropdownMenu>
+
+				<!-- Domain dropdown -->
+				<DropdownMenu>
+					<DropdownMenuTrigger>
+						<Button variant="outline" size="sm" class="gap-1.5">
+							Domain
+							{#if selectedDomains.size > 0}
+								<Badge variant="secondary" class="ml-1">{selectedDomains.size}</Badge>
+							{/if}
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent>
+						{#each uniqueDomains as domain}
+							<DropdownMenuCheckboxItem
+								checked={selectedDomains.has(domain)}
+								onCheckedChange={() => selectedDomains = toggleSetItem(selectedDomains, domain)}
+							>
+								{domain}
+							</DropdownMenuCheckboxItem>
+						{/each}
+					</DropdownMenuContent>
+				</DropdownMenu>
+
+				<!-- Target Variable dropdown -->
+				<DropdownMenu>
+					<DropdownMenuTrigger>
+						<Button variant="outline" size="sm" class="gap-1.5">
+							Variable
+							{#if selectedTargetVars.size > 0}
+								<Badge variant="secondary" class="ml-1">{selectedTargetVars.size}</Badge>
+							{/if}
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent class="max-h-64 overflow-y-auto">
+						{#each uniqueTargetVars as variable}
+							<DropdownMenuCheckboxItem
+								checked={selectedTargetVars.has(variable)}
+								onCheckedChange={() => selectedTargetVars = toggleSetItem(selectedTargetVars, variable)}
+							>
+								{variable}
+							</DropdownMenuCheckboxItem>
+						{/each}
+					</DropdownMenuContent>
+				</DropdownMenu>
+
+				<!-- Violations toggle -->
+				<Button
+					variant={violationsOnly ? 'default' : 'outline'}
+					size="sm"
+					onclick={() => violationsOnly = !violationsOnly}
+				>
+					Issues Only
+				</Button>
+
+				<!-- Clear all (visible when filters active) -->
+				{#if hasActiveFilters}
+					<Button variant="ghost" size="sm" class="gap-1 text-muted-foreground" onclick={clearAllFilters}>
+						<X class="h-3.5 w-3.5" />
+						Clear
+					</Button>
+				{/if}
+			</div>
+
+			<!-- Result count when filtered -->
+			{#if hasActiveFilters}
+				<p class="text-muted-foreground mb-3 text-sm">
+					Showing {displayedRules.length} of {tabFilteredRules.length} rules
+				</p>
+			{/if}
 
 			<!-- Rules list -->
 			{#if displayedRules.length === 0}

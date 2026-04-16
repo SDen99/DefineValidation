@@ -41,6 +41,33 @@ export const editHistorySidebarWidth = $state<{ value: number }>({ value: 288 })
 // Top-level app view (state-based navigation for Domino iframe compatibility)
 export const appView = $state<{ value: 'datasets' | 'rules' }>({ value: 'datasets' });
 
+// Rule filter state — persisted per tab
+export type RuleTabFilters = {
+	searchTerm: string;
+	ruleTypes: string[];
+	domains: string[];
+	targetVars: string[];
+	violationsOnly: boolean;
+};
+
+export const ruleFilters = $state<{ value: Record<string, RuleTabFilters> }>({
+	value: {}
+});
+
+export function getRuleTabFilters(tab: string): RuleTabFilters {
+	return ruleFilters.value[tab] ?? {
+		searchTerm: '',
+		ruleTypes: [],
+		domains: [],
+		targetVars: [],
+		violationsOnly: false
+	};
+}
+
+export function setRuleTabFilters(tab: string, filters: RuleTabFilters) {
+	ruleFilters.value = { ...ruleFilters.value, [tab]: filters };
+}
+
 // View Mode State
 export const viewMode = $state<{ value: 'data' | 'metadata' }>({ value: 'data' });
 export const metadataViewMode = $state<{ value: 'table' | 'card' }>({ value: 'table' });
