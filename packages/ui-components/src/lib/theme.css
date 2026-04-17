@@ -1,2 +1,2 @@
-/* Import centralized theme */
-@import '../../../theme/src/theme.css';
+/* Import centralized theme from app */
+@import '../../../app/src/theme.css';

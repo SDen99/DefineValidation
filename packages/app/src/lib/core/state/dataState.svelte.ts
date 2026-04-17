@@ -36,7 +36,6 @@
  */
 import { SvelteDatasetStateManager } from './SvelteDatasetStateManager.svelte.ts';
 import { normalizeDatasetId } from '@sden99/dataset-domain';
-import { getActiveVariables } from '@sden99/vlm-processing';
 import { DataStateProviderImpl } from './DataStateProvider';
 // Note: Metadata components are now initialized in +layout.svelte with the proper state provider
 import * as workerState from './workerState.svelte';
@@ -249,9 +248,8 @@ export const getActiveDefineInfoWithItemGroup = () => {
 };
 
 // ============================================
-// VLM AND WORKER STATE EXPORTS
+// WORKER STATE EXPORTS
 // ============================================
-export { getActiveVariables };
 
 export const {
 	dataEngine,
@@ -326,7 +324,6 @@ if (typeof window !== 'undefined') {
 		getLoadingStates,
 		getOriginalFilenames,
 		getDefineXmlInfo,
-		getActiveVariables,
 		dataEngine: workerState.dataEngine,
 		getActiveDefineInfo,
 		getActiveItemGroupMetadata,

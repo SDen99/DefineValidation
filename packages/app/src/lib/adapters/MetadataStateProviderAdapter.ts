@@ -1,7 +1,6 @@
 /**
  * Metadata State Provider Adapter
  * Implements the MetadataStateProvider interface to bridge app state to package
- * Following the VLM reactive boundary pattern
  */
 
 import type { MetadataStateProvider } from '@sden99/metadata-components';
@@ -13,12 +12,8 @@ import * as dataState from '$lib/core/state/dataState.svelte';
  * Bridges app-specific state to the metadata components package
  */
 export class MetadataStateProviderAdapter implements MetadataStateProvider {
-	/**
-	 * Get active variables from app's data state
-	 */
 	getActiveVariables(): ValueLevelMetadata[] {
-		const variables = dataState.getActiveVariables();
-		return variables || [];
+		return [];
 	}
 
 	/**

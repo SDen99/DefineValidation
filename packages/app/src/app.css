@@ -1,5 +1,5 @@
-/* Import centralized theme */
-@import '../../theme/src/theme.css';
+/* Centralized theme (design tokens, dark mode, Tailwind setup) */
+@import './theme.css';
 
 html,
 body {
