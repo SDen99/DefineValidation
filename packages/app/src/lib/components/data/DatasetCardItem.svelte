@@ -6,7 +6,8 @@
 		Trash2,
 		Loader2,
 		AlertCircle,
-		ChevronDown
+		ChevronDown,
+		CircleCheck
 	} from '@lucide/svelte/icons';
 	import * as Button from '@sden99/ui-components';
 	import { Progress } from '@sden99/ui-components';
@@ -23,6 +24,7 @@
 		isSelected,
 		isDeleted = false,
 		validationIssueCount = 0,
+		hasValidationRun = false,
 		onDelete,
 		onClick
 	} = $props<{
@@ -39,6 +41,7 @@
 		isSelected: boolean;
 		isDeleted?: boolean;
 		validationIssueCount?: number;
+		hasValidationRun?: boolean;
 		onDelete: () => void;
 		onClick: () => void;
 	}>();
@@ -182,7 +185,7 @@
 
 			<!-- Actions Section -->
 			<div class="flex flex-shrink-0 items-center gap-2 pl-2">
-				{#if validationIssueCount > 0}
+				{#if hasValidationRun && validationIssueCount > 0}
 					<span
 						class="bg-destructive text-destructive-foreground inline-flex h-[14px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[8px] font-semibold"
 						title="{validationIssueCount} validation {validationIssueCount === 1
@@ -190,6 +193,10 @@
 							: 'issues'}"
 					>
 						{validationIssueCount}
+					</span>
+				{:else if hasValidationRun && validationIssueCount === 0}
+					<span title="No validation issues">
+						<CircleCheck class="h-4 w-4 text-green-500" />
 					</span>
 				{/if}
 

@@ -68,8 +68,9 @@
 				d.id === currentDomain || // Matches the specific domain (normalized)
 				d.id === normalizedFileId; // Matches the underlying file (normalized)
 
-			// Get validation issue count for this dataset
+			// Get validation status for this dataset
 			const validationIssueCount = validationService.getTotalIssueCount(originalName);
+			const hasValidationRun = validationService.hasValidationRun(originalName);
 
 			return {
 				id: d.id, // For the #each key
@@ -79,6 +80,7 @@
 				metadata,
 				isSelected,
 				validationIssueCount,
+				hasValidationRun,
 				oid: datasetInfo?.oid || null,
 				defineType: datasetInfo?.defineType || null
 			};
@@ -96,6 +98,7 @@
 
 		isDeleting = true;
 		try {
+			validationService.invalidateCache(datasetToDelete);
 			await dataState.deleteDataset(datasetToDelete);
 			datasetToDelete = null;
 			dialogOpen = false;
@@ -151,6 +154,7 @@
 								metadata={props.metadata}
 								isSelected={props.isSelected}
 								validationIssueCount={props.validationIssueCount}
+							hasValidationRun={props.hasValidationRun}
 								onDelete={() => handleDeleteClick(props.originalName)}
 								onClick={() => handleDatasetClick(props.originalName)}
 							/>

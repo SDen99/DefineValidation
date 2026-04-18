@@ -461,6 +461,15 @@ export const validationService = {
 		return results.reduce((sum, r) => sum + r.issueCount, 0);
 	},
 
+	hasValidationRun(datasetId: string): boolean {
+		if (resultsByDataset.has(datasetId)) return true;
+		const normalized = normalizeDatasetId(datasetId);
+		for (const key of resultsByDataset.keys()) {
+			if (normalizeDatasetId(key) === normalized) return true;
+		}
+		return false;
+	},
+
 	getViolationsByRule(ruleId: string): Array<{
 		datasetId: string;
 		columnId: string;
