@@ -25,6 +25,7 @@
 		isDeleted = false,
 		validationIssueCount = 0,
 		hasValidationRun = false,
+		validationSummary = {},
 		onDelete,
 		onClick
 	} = $props<{
@@ -42,6 +43,7 @@
 		isDeleted?: boolean;
 		validationIssueCount?: number;
 		hasValidationRun?: boolean;
+		validationSummary?: Record<string, number>;
 		onDelete: () => void;
 		onClick: () => void;
 	}>();
@@ -185,19 +187,33 @@
 
 			<!-- Actions Section -->
 			<div class="flex flex-shrink-0 items-center gap-2 pl-2">
-				{#if hasValidationRun && validationIssueCount > 0}
-					<span
-						class="bg-destructive text-destructive-foreground inline-flex h-[14px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[8px] font-semibold"
-						title="{validationIssueCount} validation {validationIssueCount === 1
-							? 'issue'
-							: 'issues'}"
-					>
-						{validationIssueCount}
-					</span>
-				{:else if hasValidationRun && validationIssueCount === 0}
-					<span title="No validation issues">
-						<CircleCheck class="h-4 w-4 text-green-500" />
-					</span>
+				{#if hasValidationRun}
+					<Tooltip.Provider>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#if validationIssueCount > 0}
+									<span
+										class="bg-destructive text-destructive-foreground inline-flex h-[14px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[8px] font-semibold"
+									>
+										{validationIssueCount}
+									</span>
+								{:else}
+									<span>
+										<CircleCheck class="h-4 w-4 text-green-500" />
+									</span>
+								{/if}
+							</Tooltip.Trigger>
+							<Tooltip.Content>
+								{#if validationIssueCount > 0}
+									{#each Object.entries(validationSummary).filter(([_, count]) => count > 0) as [type, count]}
+										<p>{type}: {count}</p>
+									{/each}
+								{:else}
+									<p>No validation issues</p>
+								{/if}
+							</Tooltip.Content>
+						</Tooltip.Root>
+					</Tooltip.Provider>
 				{/if}
 
 				{#if metadata?.Class}

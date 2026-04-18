@@ -72,6 +72,16 @@
 			const validationIssueCount = validationService.getTotalIssueCount(originalName);
 			const hasValidationRun = validationService.hasValidationRun(originalName);
 
+			// Build validation summary grouped by rule type
+			let validationSummary: Record<string, number> = {};
+			if (hasValidationRun) {
+				const results = validationService.getResultsForDataset(originalName);
+				for (const r of results) {
+					const ruleType = r.details?.rule?.Rule_Type || 'Other';
+					validationSummary[ruleType] = (validationSummary[ruleType] || 0) + r.issueCount;
+				}
+			}
+
 			return {
 				id: d.id, // For the #each key
 				originalName,
@@ -81,6 +91,7 @@
 				isSelected,
 				validationIssueCount,
 				hasValidationRun,
+				validationSummary,
 				oid: datasetInfo?.oid || null,
 				defineType: datasetInfo?.defineType || null
 			};
@@ -155,6 +166,7 @@
 								isSelected={props.isSelected}
 								validationIssueCount={props.validationIssueCount}
 							hasValidationRun={props.hasValidationRun}
+							validationSummary={props.validationSummary}
 								onDelete={() => handleDeleteClick(props.originalName)}
 								onClick={() => handleDatasetClick(props.originalName)}
 							/>
