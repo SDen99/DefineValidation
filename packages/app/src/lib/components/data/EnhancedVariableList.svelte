@@ -154,6 +154,34 @@
 		return 'bg-violet-500/10 text-violet-600 dark:text-violet-400';
 	}
 
+	function abbreviate(value: string, max = 5): string {
+		const v = value.toLowerCase();
+		if (v === 'integer') return 'int';
+		if (v === 'float' || v === 'float64') return 'f64';
+		if (v === 'float32') return 'f32';
+		if (v === 'int64') return 'i64';
+		if (v === 'int32') return 'i32';
+		if (v === 'object') return 'obj';
+		if (v === 'string') return 'str';
+		if (v === 'boolean') return 'bool';
+		if (v === 'datetime64[ns]') return 'dt';
+		if (v === 'identifier') return 'Id';
+		if (v === 'topic') return 'Top';
+		if (v === 'timing') return 'Tim';
+		if (v === 'qualifier') return 'Qual';
+		if (v === 'record qualifier') return 'RQual';
+		if (v === 'grouping qualifier') return 'GQual';
+		if (v === 'synonym qualifier') return 'SQual';
+		if (v === 'result qualifier') return 'ResQ';
+		if (v === 'variable qualifier') return 'VQual';
+		if (v === 'assigned') return 'Asgn';
+		if (v === 'derived') return 'Derv';
+		if (v === 'predecessor') return 'Pred';
+		if (v === 'collected') return 'Coll';
+		if (value.length > max) return value.substring(0, max);
+		return value;
+	}
+
 	function getVisibilityIcon(visible: boolean) {
 		return visible ? Eye : EyeOff;
 	}
@@ -194,7 +222,7 @@
 					role={isDefineOnly ? 'listitem' : 'button'}
 					tabindex={isDefineOnly ? -1 : 0}
 				>
-					<div class="flex items-center gap-2 flex-wrap">
+					<div class="flex items-center gap-1.5">
 						<!-- Drag handle -->
 						{#if isDraggable}
 							<div class="flex-shrink-0 cursor-move opacity-50 hover:opacity-100">
@@ -217,73 +245,71 @@
 							<div class="w-10 flex-shrink-0"></div>
 						{/if}
 
-						<!-- Variable name -->
-						<span class="flex-shrink-0 text-sm font-medium {isDefineOnly ? 'italic' : ''}">
-							{variable.name}
-						</span>
-
-						<!-- Label -->
-						{#if variable.label}
-							<span class="text-foreground/70 min-w-0 truncate text-xs italic">
-								— {variable.label}
+						<!-- Left: Name + label (flexible, truncates) -->
+						<div class="min-w-0 flex-1 flex items-center gap-1 overflow-hidden">
+							<span class="flex-shrink-0 text-sm font-medium {isDefineOnly ? 'italic' : ''}">
+								{variable.name}
 							</span>
-						{/if}
+							{#if variable.label}
+								<span class="text-foreground/50 min-w-0 truncate text-[11px] italic">
+									{variable.label}
+								</span>
+							{/if}
+						</div>
 
-						<!-- Metadata badges -->
-						{#if variable.cdiscDataType}
-							<Badge variant="outline" class="{getCdiscTypeColor(variable.cdiscDataType)} text-[10px] px-1 py-0">
-								{variable.cdiscDataType}{#if variable.length}({variable.length}){/if}
-							</Badge>
-						{/if}
-						{#if variable.pandasDtype}
-							<Badge variant="outline" class="{getDataTypeColor(variable.pandasDtype)} text-[10px] px-1 py-0">
-								{variable.pandasDtype}
-							</Badge>
-						{/if}
-						{#if variable.isKey}
-							<Badge variant="outline" class="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] px-1 py-0">
-								Key
-							</Badge>
-						{/if}
-						{#if variable.mandatory === 'Yes'}
-							<Badge variant="outline" class="bg-destructive/10 text-destructive text-[10px] px-1 py-0">
-								Req
-							</Badge>
-						{/if}
-						{#if variable.role}
-							<Badge variant="outline" class="bg-muted text-muted-foreground text-[10px] px-1 py-0">
-								{variable.role}
-							</Badge>
-						{/if}
-						{#if variable.originType}
-							<Badge variant="outline" class="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[10px] px-1 py-0">
-								{variable.originType}
-							</Badge>
-						{/if}
-
-						<!-- Codelist chevron -->
-						{#if variable.codeList}
-							<button
-								class="text-muted-foreground hover:text-foreground flex-shrink-0 p-0.5 transition-transform"
-								onclick={() => toggleCodelist(variable.name)}
-								title={expandedCodelists.has(variable.name) ? 'Collapse codelist' : 'Expand codelist'}
-							>
-								<ChevronDown
-									class="h-3.5 w-3.5 transition-transform {expandedCodelists.has(variable.name) ? 'rotate-180' : ''}"
-								/>
-							</button>
-						{/if}
-
-						<!-- Source badge -->
-						{#if variable.source === 'data-only' && hasDefine}
-							<Badge variant="outline" class="flex-shrink-0 bg-warning/10 text-warning text-[10px] px-1 py-0">
-								Data Only
-							</Badge>
-						{:else if variable.source === 'define-only'}
-							<Badge variant="outline" class="flex-shrink-0 bg-destructive/10 text-destructive text-[10px] px-1 py-0">
-								Define Only
-							</Badge>
-						{/if}
+						<!-- Right: Compact badges + chevron -->
+						<div class="flex flex-shrink-0 items-center gap-0.5">
+							{#if variable.cdiscDataType}
+								<Badge variant="outline" class="{getCdiscTypeColor(variable.cdiscDataType)} text-[9px] px-1 py-0" title="{variable.cdiscDataType}{variable.length ? `(${variable.length})` : ''}">
+									{abbreviate(variable.cdiscDataType)}{#if variable.length}<span class="opacity-60">{variable.length}</span>{/if}
+								</Badge>
+							{/if}
+							{#if variable.pandasDtype}
+								<Badge variant="outline" class="{getDataTypeColor(variable.pandasDtype)} text-[9px] px-1 py-0" title={variable.pandasDtype}>
+									{abbreviate(variable.pandasDtype)}
+								</Badge>
+							{/if}
+							{#if variable.isKey}
+								<Badge variant="outline" class="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] px-1 py-0" title="Key variable">
+									K
+								</Badge>
+							{/if}
+							{#if variable.mandatory === 'Yes'}
+								<Badge variant="outline" class="bg-destructive/10 text-destructive text-[9px] px-1 py-0" title="Mandatory / Required">
+									R
+								</Badge>
+							{/if}
+							{#if variable.role}
+								<Badge variant="outline" class="bg-muted text-muted-foreground text-[9px] px-1 py-0" title="Role: {variable.role}">
+									{abbreviate(variable.role)}
+								</Badge>
+							{/if}
+							{#if variable.originType}
+								<Badge variant="outline" class="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[9px] px-1 py-0" title="Origin: {variable.originType}">
+									{abbreviate(variable.originType)}
+								</Badge>
+							{/if}
+							{#if variable.codeList}
+								<button
+									class="text-muted-foreground hover:text-foreground flex-shrink-0 p-0.5 transition-transform"
+									onclick={() => toggleCodelist(variable.name)}
+									title={expandedCodelists.has(variable.name) ? 'Collapse codelist' : 'Expand codelist'}
+								>
+									<ChevronDown
+										class="h-3 w-3 transition-transform {expandedCodelists.has(variable.name) ? 'rotate-180' : ''}"
+									/>
+								</button>
+							{/if}
+							{#if variable.source === 'data-only' && hasDefine}
+								<Badge variant="outline" class="bg-warning/10 text-warning text-[9px] px-1 py-0" title="Variable exists in data but not in Define-XML">
+									DO
+								</Badge>
+							{:else if variable.source === 'define-only'}
+								<Badge variant="outline" class="bg-destructive/10 text-destructive text-[9px] px-1 py-0" title="Variable exists in Define-XML but not in data">
+									Def
+								</Badge>
+							{/if}
+						</div>
 					</div>
 
 					<!-- Expandable codelist -->
