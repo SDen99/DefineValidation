@@ -102,8 +102,8 @@ echo "==> Deploy branch updated (from main $COMMIT_SHA)"
 
 # --- Optionally push ---
 if [[ "$PUSH" == true ]]; then
-  echo "==> Pushing deploy branch to remote..."
-  git push -u origin deploy
+  echo "==> Pushing deploy branch to public repo..."
+  git push -u public deploy:main
 fi
 
 # --- Return to main ---
