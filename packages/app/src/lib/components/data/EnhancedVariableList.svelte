@@ -4,7 +4,11 @@
 	import { Button, Input } from '@sden99/ui-components';
 	import { Checkbox } from '@sden99/ui-components';
 	import { Badge } from '@sden99/ui-components';
-	import { GripVertical, Eye, EyeOff, Search } from '@lucide/svelte/icons';
+	import { GripVertical, Eye, EyeOff, Search, ChevronDown } from '@lucide/svelte/icons';
+	import { mergeVariables } from '$lib/adapters/mergedVariableAdapter';
+	import type { MergedVariable } from '$lib/types/mergedVariable';
+	import type { DefineType } from '@sden99/cdisc-types/define-xml';
+	import InlineCodeListDisplay from '$lib/components/metadata/shared/InlineCodeListDisplay.svelte';
 
 	// Props - receive reference to ClinicalVirtualTable
 	let { clinicalTableRef = $bindable() } = $props();
@@ -23,26 +27,58 @@
 	let visibleColumns = $derived.by(() => {
 		return clinicalTableRef?.getVisibleColumns() || [];
 	});
-	let currentDatasetId = $derived(dataState.selectedDatasetId.value);
 
-	// Combine column info with data types
-	let columnInfo = $derived.by(() => {
-		return availableColumns.map((column: string) => ({
-			name: column,
-			dtype: currentDataset?.details?.dtypes?.[column] ?? 'unknown',
-			visible: visibleColumns.includes(column),
-			order: visibleColumns.indexOf(column)
-		}));
+	// Define-XML metadata lookup
+	let defineMetadata = $derived.by(() => {
+		const name = dataState.selectedDomain.value || dataState.selectedDatasetId.value;
+		const itemGroup = dataState.getItemGroupMetadata(name);
+		if (!itemGroup) return { itemGroup: null, define: null, defineType: null as DefineType | null };
+		const defineXmlInfo = dataState.getDefineXmlInfo();
+		const define = defineXmlInfo.ADaM ?? defineXmlInfo.SDTM;
+		const defineType: DefineType | null = defineXmlInfo.ADaM ? 'ADaM' : defineXmlInfo.SDTM ? 'SDTM' : null;
+		return { itemGroup, define, defineType };
+	});
+
+	// Merged variables combining data columns + Define-XML metadata
+	let mergedVariables: MergedVariable[] = $derived.by(() => {
+		return mergeVariables(
+			availableColumns,
+			visibleColumns,
+			currentDataset?.details?.dtypes,
+			defineMetadata.itemGroup,
+			defineMetadata.define
+		);
 	});
 
 	// Search state
 	let searchTerm = $state('');
 
-	let filteredColumnInfo = $derived.by(() => {
-		if (!searchTerm.trim()) return columnInfo;
+	let filteredVariables = $derived.by(() => {
+		if (!searchTerm.trim()) return mergedVariables;
 		const term = searchTerm.toLowerCase();
-		return columnInfo.filter((c) => c.name.toLowerCase().includes(term));
+		return mergedVariables.filter(
+			(v) =>
+				v.name.toLowerCase().includes(term) ||
+				v.label?.toLowerCase().includes(term)
+		);
 	});
+
+	// Codelist expand/collapse state
+	let expandedCodelists = $state<Set<string>>(new Set());
+	function toggleCodelist(name: string) {
+		const next = new Set(expandedCodelists);
+		if (next.has(name)) {
+			next.delete(name);
+		} else {
+			next.add(name);
+		}
+		expandedCodelists = next;
+	}
+
+	// Summary counts
+	let defineOnlyCount = $derived(mergedVariables.filter((v) => v.source === 'define-only').length);
+	let dataOnlyCount = $derived(mergedVariables.filter((v) => v.source === 'data-only').length);
+	let hasDefine = $derived(defineMetadata.itemGroup !== null);
 
 	// Drag and drop state
 	let draggedColumn = $state<string | null>(null);
@@ -69,18 +105,20 @@
 	}
 
 	// Drag and drop handlers
-	function handleDragStart(e: DragEvent, column: string) {
-		draggedColumn = column;
+	function handleDragStart(e: DragEvent, variable: MergedVariable) {
+		if (variable.source === 'define-only') return;
+		draggedColumn = variable.name;
 		if (e.dataTransfer) {
 			e.dataTransfer.effectAllowed = 'move';
-			e.dataTransfer.setData('text/plain', column);
+			e.dataTransfer.setData('text/plain', variable.name);
 		}
 	}
 
-	function handleDragOver(e: DragEvent, column: string) {
+	function handleDragOver(e: DragEvent, variable: MergedVariable) {
+		if (variable.source === 'define-only') return;
 		e.preventDefault();
-		if (draggedColumn !== column) {
-			dragOverColumn = column;
+		if (draggedColumn !== variable.name) {
+			dragOverColumn = variable.name;
 		}
 	}
 
@@ -88,16 +126,13 @@
 		dragOverColumn = null;
 	}
 
-	function handleDrop(e: DragEvent, targetColumn: string) {
+	function handleDrop(e: DragEvent, variable: MergedVariable) {
+		if (variable.source === 'define-only') return;
 		e.preventDefault();
 
-		if (draggedColumn && draggedColumn !== targetColumn) {
-			console.log(`[EnhancedVariableList] Reordering: ${draggedColumn} -> ${targetColumn}`);
-
-			// Use ClinicalVirtualTable's reorder method
-			clinicalTableRef?.reorderColumns(draggedColumn, targetColumn);
-
-			console.log(`[EnhancedVariableList] Reordered columns: ${draggedColumn} -> ${targetColumn}`);
+		if (draggedColumn && draggedColumn !== variable.name) {
+			console.log(`[EnhancedVariableList] Reordering: ${draggedColumn} -> ${variable.name}`);
+			clinicalTableRef?.reorderColumns(draggedColumn, variable.name);
 		}
 
 		draggedColumn = null;
@@ -113,6 +148,10 @@
 		if (type.includes('date') || type.includes('time')) return 'bg-primary/10 text-primary';
 		if (type.includes('bool')) return 'bg-warning/10 text-warning';
 		return 'bg-muted text-muted-foreground';
+	}
+
+	function getCdiscTypeColor(_dtype: string): string {
+		return 'bg-violet-500/10 text-violet-600 dark:text-violet-400';
 	}
 
 	function getVisibilityIcon(visible: boolean) {
@@ -134,57 +173,128 @@
 		<Button size="sm" variant="outline" onclick={handleReset}>Reset</Button>
 	</div>
 
-	<!-- Scrollable: Column list -->
+	<!-- Scrollable: Variable list -->
 	<div class="min-h-0 flex-1 overflow-y-auto">
 		<div class="space-y-1">
-			{#each filteredColumnInfo as column}
-				{@const IconComponent = getVisibilityIcon(column.visible)}
+			{#each filteredVariables as variable}
+				{@const isDefineOnly = variable.source === 'define-only'}
+				{@const isDraggable = !isDefineOnly && variable.visible}
+				{@const IconComponent = getVisibilityIcon(variable.visible)}
+				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 				<div
-					role="button"
-					tabindex="0"
-					class="flex items-center space-x-2 rounded border p-2
-                           {dragOverColumn === column.name
-						? 'border-info bg-info/10'
-						: 'border-border'}
-                           {column.visible ? 'bg-card' : 'bg-muted/50 opacity-75'}
-                           hover:bg-muted/50 transition-colors"
-					draggable={column.visible}
-					ondragstart={(e) => handleDragStart(e, column.name)}
-					ondragover={(e) => handleDragOver(e, column.name)}
+					class="rounded border p-2
+						{dragOverColumn === variable.name ? 'border-info bg-info/10' : 'border-border'}
+						{isDefineOnly ? 'border-dashed opacity-60' : variable.visible ? 'bg-card' : 'bg-muted/50 opacity-75'}
+						hover:bg-muted/50 transition-colors"
+					draggable={isDraggable}
+					ondragstart={(e) => handleDragStart(e, variable)}
+					ondragover={(e) => handleDragOver(e, variable)}
 					ondragleave={handleDragLeave}
-					ondrop={(e) => handleDrop(e, column.name)}
+					ondrop={(e) => handleDrop(e, variable)}
+					role={isDefineOnly ? 'listitem' : 'button'}
+					tabindex={isDefineOnly ? -1 : 0}
 				>
-					<!-- Drag handle (only for visible columns) -->
-					{#if column.visible}
-						<div class="cursor-move opacity-50 hover:opacity-100">
-							<GripVertical class="h-4 w-4" />
-						</div>
-					{:else}
-						<div class="w-4"></div>
-					{/if}
+					<div class="flex items-center gap-2 flex-wrap">
+						<!-- Drag handle -->
+						{#if isDraggable}
+							<div class="flex-shrink-0 cursor-move opacity-50 hover:opacity-100">
+								<GripVertical class="h-4 w-4" />
+							</div>
+						{:else}
+							<div class="w-4 flex-shrink-0"></div>
+						{/if}
 
-					<Checkbox
-						checked={column.visible}
-						onCheckedChange={() => handleColumnToggle(column.name)}
-					/>
+						<!-- Checkbox (data columns only) -->
+						{#if !isDefineOnly}
+							<Checkbox
+								checked={variable.visible}
+								onCheckedChange={() => handleColumnToggle(variable.name)}
+							/>
+							<IconComponent
+								class="h-4 w-4 flex-shrink-0 {variable.visible ? 'text-success' : 'text-muted-foreground'}"
+							/>
+						{:else}
+							<div class="w-10 flex-shrink-0"></div>
+						{/if}
 
-					<!-- Visibility icon -->
-					<IconComponent
-						class="h-4 w-4 {column.visible ? 'text-success' : 'text-muted-foreground'}"
-					/>
+						<!-- Variable name -->
+						<span class="flex-shrink-0 text-sm font-medium {isDefineOnly ? 'italic' : ''}">
+							{variable.name}
+						</span>
 
-					<!-- Column name and info -->
-					<div class="min-w-0 flex-1">
-						<div class="flex items-center gap-2">
-							<span class="truncate text-sm font-medium">{column.name}</span>
-							<Badge variant="outline" class={getDataTypeColor(column.dtype)}>
-								{column.dtype}
+						<!-- Label -->
+						{#if variable.label}
+							<span class="text-foreground/70 min-w-0 truncate text-xs italic">
+								— {variable.label}
+							</span>
+						{/if}
+
+						<!-- Metadata badges -->
+						{#if variable.cdiscDataType}
+							<Badge variant="outline" class="{getCdiscTypeColor(variable.cdiscDataType)} text-[10px] px-1 py-0">
+								{variable.cdiscDataType}{#if variable.length}({variable.length}){/if}
 							</Badge>
-						</div>
-						{#if column.visible && column.order >= 0}
-							<span class="text-muted-foreground text-xs">Position: {column.order + 1}</span>
+						{/if}
+						{#if variable.pandasDtype}
+							<Badge variant="outline" class="{getDataTypeColor(variable.pandasDtype)} text-[10px] px-1 py-0">
+								{variable.pandasDtype}
+							</Badge>
+						{/if}
+						{#if variable.isKey}
+							<Badge variant="outline" class="bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] px-1 py-0">
+								Key
+							</Badge>
+						{/if}
+						{#if variable.mandatory === 'Yes'}
+							<Badge variant="outline" class="bg-destructive/10 text-destructive text-[10px] px-1 py-0">
+								Req
+							</Badge>
+						{/if}
+						{#if variable.role}
+							<Badge variant="outline" class="bg-muted text-muted-foreground text-[10px] px-1 py-0">
+								{variable.role}
+							</Badge>
+						{/if}
+						{#if variable.originType}
+							<Badge variant="outline" class="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[10px] px-1 py-0">
+								{variable.originType}
+							</Badge>
+						{/if}
+
+						<!-- Codelist chevron -->
+						{#if variable.codeList}
+							<button
+								class="text-muted-foreground hover:text-foreground flex-shrink-0 p-0.5 transition-transform"
+								onclick={() => toggleCodelist(variable.name)}
+								title={expandedCodelists.has(variable.name) ? 'Collapse codelist' : 'Expand codelist'}
+							>
+								<ChevronDown
+									class="h-3.5 w-3.5 transition-transform {expandedCodelists.has(variable.name) ? 'rotate-180' : ''}"
+								/>
+							</button>
+						{/if}
+
+						<!-- Source badge -->
+						{#if variable.source === 'data-only' && hasDefine}
+							<Badge variant="outline" class="flex-shrink-0 bg-warning/10 text-warning text-[10px] px-1 py-0">
+								Data Only
+							</Badge>
+						{:else if variable.source === 'define-only'}
+							<Badge variant="outline" class="flex-shrink-0 bg-destructive/10 text-destructive text-[10px] px-1 py-0">
+								Define Only
+							</Badge>
 						{/if}
 					</div>
+
+					<!-- Expandable codelist -->
+					{#if variable.codeList && expandedCodelists.has(variable.name)}
+						<div class="mt-1 ml-6">
+							<InlineCodeListDisplay
+								codelist={variable.codeList}
+								defineType={defineMetadata.defineType ?? 'SDTM'}
+							/>
+						</div>
+					{/if}
 				</div>
 			{/each}
 		</div>
@@ -192,6 +302,19 @@
 
 	<!-- Fixed: Status info -->
 	<div class="text-muted-foreground flex-none border-t pt-2 text-xs">
-		{visibleColumns.length} of {availableColumns.length} columns visible
+		<div>{visibleColumns.length} of {availableColumns.length} data columns visible</div>
+		{#if hasDefine && (defineOnlyCount > 0 || dataOnlyCount > 0)}
+			<div class="mt-0.5">
+				{#if defineOnlyCount > 0}
+					<span class="text-destructive">{defineOnlyCount} define-only</span>
+				{/if}
+				{#if defineOnlyCount > 0 && dataOnlyCount > 0}
+					<span> · </span>
+				{/if}
+				{#if dataOnlyCount > 0}
+					<span class="text-warning">{dataOnlyCount} data-only</span>
+				{/if}
+			</div>
+		{/if}
 	</div>
 </div>

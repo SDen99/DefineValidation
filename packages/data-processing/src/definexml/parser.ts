@@ -148,7 +148,8 @@ export const parseDefineXML = async (xmlString: string): Promise<ParsedDefineXML
 				Structure: getAttribute(group, 'def:Structure'),
 				ArchiveLocationID: getAttribute(group, 'def:ArchiveLocationID'),
 				CommentOID: getAttribute(group, 'def:CommentOID'),
-				Description: getTextContent(group, 'Description'),
+				Description: getTextContent(group, 'Description')
+					|| getAttribute(group, 'def:Label') || null,
 				Class:
 					group.getAttribute('def:Class') ||
 					group.querySelector('Class')?.getAttribute('Name') ||
@@ -159,7 +160,8 @@ export const parseDefineXML = async (xmlString: string): Promise<ParsedDefineXML
 	);
 	// --- END OF CHANGED SECTION ---
 
-	// Extract ItemDefs (Unchanged)
+	// Extract ItemDefs
+	// Supports both Define-XML v2.0+ (child elements) and v1.0 (def: attributes) formats
 	const ItemDefs: ItemDef[] = Array.from(metaDataVersion.querySelectorAll('ItemDef')).map(
 		(item) => ({
 			OID: getAttribute(item, 'OID') || null,
@@ -168,8 +170,10 @@ export const parseDefineXML = async (xmlString: string): Promise<ParsedDefineXML
 			SASFieldName: getAttribute(item, 'SASFieldName') || null,
 			DataType: getAttribute(item, 'DataType') || null,
 			Length: getAttribute(item, 'Length') || null,
-			Description: item.querySelector('Description TranslatedText')?.textContent || null,
-			OriginType: item.querySelector('Origin')?.getAttribute('Type') || null,
+			Description: item.querySelector('Description TranslatedText')?.textContent
+				|| getAttribute(item, 'def:Label') || null,
+			OriginType: item.querySelector('Origin')?.getAttribute('Type')
+				|| getAttribute(item, 'def:Origin') || null,
 			Origin: item.querySelector('Origin Description TranslatedText')?.textContent || null,
 			OriginSource: item.querySelector('Origin')?.getAttribute('Source') || null,
 			CodeListOID: item.querySelector('CodeListRef')?.getAttribute('CodeListOID') || null,
