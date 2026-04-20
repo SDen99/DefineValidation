@@ -56,7 +56,8 @@ export function convertToDefineVariables(
 			variable: {
 				name: itemDef.Name,
 				dataType: itemDef.DataType || 'text',
-				length: !isNaN(length as number) ? length : undefined
+				length: !isNaN(length as number) ? length : undefined,
+				label: itemDef.Description || undefined
 			},
 			// Mandatory is "Yes" or "No" in Define-XML
 			mandatory: itemRef.Mandatory?.toLowerCase() === 'yes'

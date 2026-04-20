@@ -246,8 +246,8 @@
 						{/if}
 
 						<!-- Left: Name + label (flexible, truncates) -->
-						<div class="min-w-0 flex-1 flex items-center gap-1 overflow-hidden">
-							<span class="flex-shrink-0 text-sm font-medium {isDefineOnly ? 'italic' : ''}">
+						<div class="min-w-0 flex-1 flex items-center gap-1 overflow-hidden" title={variable.label ?? ''}>
+							<span class="w-16 flex-shrink-0 text-sm font-medium {isDefineOnly ? 'italic' : ''}">
 								{variable.name}
 							</span>
 							{#if variable.label}

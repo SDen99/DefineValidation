@@ -133,6 +133,8 @@ export interface DefineVariable {
 		dataType: string;
 		/** Maximum length from Define-XML ItemDef.Length */
 		length?: number;
+		/** Variable label/description from Define-XML ItemDef.Description */
+		label?: string;
 	};
 	codeList?: {
 		items: CodelistItem[];

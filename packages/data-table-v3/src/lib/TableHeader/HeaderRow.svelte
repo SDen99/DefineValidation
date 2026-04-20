@@ -20,6 +20,7 @@
 		draggedColumnId: string | null;
 		dragOverColumnId: string | null;
 		validationResults?: Map<string, ColumnValidationInfo>;
+		columnLabels?: Record<string, string>;
 
 		// Actions
 		onSort: (columnId: string) => void;
@@ -44,6 +45,7 @@
 		draggedColumnId,
 		dragOverColumnId,
 		validationResults,
+		columnLabels,
 		onSort,
 		onResize,
 		onAutoFit,
@@ -164,25 +166,25 @@
 					<button
 						onclick={() => onSort(column.id)}
 						class="flex items-center gap-1 flex-1 min-w-0 hover:text-primary transition-colors cursor-pointer"
-						title="Click to sort"
+						title={columnLabels?.[column.id] || column.header}
 					>
 						<span class="truncate">{column.header}</span>
 
 						{#if isActive}
-							<div class="sort-badge active">
+							<div class="sort-badge active" title="Click to sort">
 								<span class="sort-arrow">{sortDirection === 'asc' ? '↑' : '↓'}</span>
 								{#if sortPriority !== null && sortConfigs.length > 1}
 									<sup class="sort-super">{sortPriority}</sup>
 								{/if}
 							</div>
 						{:else}
-							<div class="sort-badge inactive">
+							<div class="sort-badge inactive" title="Click to sort">
 								<span class="sort-arrow">↕</span>
 							</div>
 						{/if}
 					</button>
 				{:else}
-					<span class="truncate flex-1 min-w-0">{column.header}</span>
+					<span class="truncate flex-1 min-w-0" title={columnLabels?.[column.id] || column.header}>{column.header}</span>
 				{/if}
 
 				<!-- Validation Badge -->

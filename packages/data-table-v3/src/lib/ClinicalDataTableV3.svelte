@@ -116,6 +116,18 @@
 		typeof height === 'number' ? height : parseInt(String(height)) || 600
 	);
 
+	// Build column label lookup from defineVariables for header tooltips
+	const columnLabels = $derived.by(() => {
+		if (!defineVariables?.length) return undefined;
+		const labels: Record<string, string> = {};
+		for (const dv of defineVariables) {
+			if (dv.variable?.name && dv.variable.label) {
+				labels[dv.variable.name] = dv.variable.label;
+			}
+		}
+		return Object.keys(labels).length > 0 ? labels : undefined;
+	});
+
 	// Create table state
 	const state = createTableState({
 		enableCdiscPriority,
@@ -360,6 +372,7 @@
 						draggedColumnId={state.draggedColumnId}
 						dragOverColumnId={state.dragOverColumnId}
 						{validationResults}
+						{columnLabels}
 						onSort={state.handleColumnHeaderClick}
 						onResize={state.handleColumnResize}
 						onAutoFit={handleColumnAutoFit}
