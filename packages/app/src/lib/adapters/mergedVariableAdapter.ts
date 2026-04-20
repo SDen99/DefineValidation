@@ -13,8 +13,8 @@ import type { MergedVariable } from '$lib/types/mergedVariable';
  * Algorithm:
  * 1. Build OID lookup maps for ItemDefs and CodeLists
  * 2. Walk ItemGroup.ItemRefs → create define-side entries keyed by uppercase name
- * 3. Walk dataColumns → match against define map or create data-only entries
- * 4. Sort: variables with orderNumber first (ascending), then data-only in original order
+ * 3. Walk dataColumns → match against define map or create data-only entries (preserves table column order)
+ * 4. Append unmatched define-only variables at the end
  */
 export function mergeVariables(
 	dataColumns: string[],
@@ -137,19 +137,6 @@ export function mergeVariables(
 		}
 	}
 
-	// Step 5: Sort — variables with orderNumber first (ascending), then the rest in original order
-	const withOrder: MergedVariable[] = [];
-	const withoutOrder: MergedVariable[] = [];
-
-	for (const v of result) {
-		if (v.orderNumber !== null) {
-			withOrder.push(v);
-		} else {
-			withoutOrder.push(v);
-		}
-	}
-
-	withOrder.sort((a, b) => a.orderNumber! - b.orderNumber!);
-
-	return [...withOrder, ...withoutOrder];
+	// Return in dataColumns order (matches table column order), with define-only appended at end
+	return result;
 }
