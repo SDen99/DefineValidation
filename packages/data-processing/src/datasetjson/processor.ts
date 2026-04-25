@@ -1,4 +1,4 @@
-import type { DatasetJsonProcessingResult, ValidationResult } from '../types/processing';
+import type { DatasetJsonProcessingResult, FileValidationResult } from '../types/processing';
 
 /**
  * CDISC Dataset-JSON v1.1 structure
@@ -171,7 +171,7 @@ export class DatasetJsonProcessor {
 	 * @param jsonString - The Dataset-JSON content to validate
 	 * @returns Validation result
 	 */
-	validate(jsonString: string): ValidationResult {
+	validate(jsonString: string): FileValidationResult {
 		if (!jsonString || jsonString.trim().length === 0) {
 			return {
 				valid: false,
@@ -240,7 +240,7 @@ export async function processDatasetJson(jsonString: string): Promise<DatasetJso
  * @param jsonString - Dataset-JSON content to validate
  * @returns Validation result
  */
-export function validateDatasetJson(jsonString: string): ValidationResult {
+export function validateDatasetJson(jsonString: string): FileValidationResult {
 	const processor = new DatasetJsonProcessor();
 	return processor.validate(jsonString);
 }

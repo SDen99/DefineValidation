@@ -1,0 +1,35 @@
+{
+  "Conformance_Details": {
+    "Standard": "sdtmig",
+    "Version": "3-4",
+    "CORE_Engine_Version": "0.5.0",
+    "Total_Runtime": "8.0s"
+  },
+  "Issue_Details": [
+    {
+      "Rule": "CG0050",
+      "Dataset": "EX.xpt",
+      "Row": 1,
+      "Variables": { "EXSTDTC": "2024-01-01" },
+      "Message": "EXSTDTC format is invalid",
+      "Sensitivity": "Value"
+    },
+    {
+      "Rule": "CG0050",
+      "Dataset": "EX.xpt",
+      "Row": "3",
+      "Variables": { "EXSTDTC": "2024-13-01" },
+      "Message": "EXSTDTC format is invalid",
+      "Sensitivity": "Value"
+    }
+  ],
+  "Rules_Report": [
+    {
+      "Rule": "CG0050",
+      "Description": "Date/time variable format check",
+      "Sensitivity": "Value",
+      "Datasets_Evaluated": 1,
+      "Errors_Found": 2
+    }
+  ]
+}

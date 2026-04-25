@@ -1,9 +1,11 @@
 /**
  * Validation Service
  *
- * Provides validation of datasets against Define-XML specifications.
- * Validates: codelists, length, types, and required fields.
- * Runs validation for ALL datasets with Define-XML matches.
+ * Public API facade for dataset validation. Orchestrates:
+ * - Rule preparation (rulePreparation.ts)
+ * - Worker-based row validation (validationWorkerBridge.ts)
+ * - Structural mismatch checks (structuralChecks.ts)
+ * - Engine result merging (engineResultAdapter.ts)
  *
  * Heavy validation (row iteration) runs in a Web Worker to keep the UI responsive.
  * Rule generation and structural checks stay on the main thread.
@@ -14,18 +16,16 @@ import { convertToDefineVariables } from '$lib/adapters/defineVariablesAdapter';
 import {
 	generateRulesFromDefine,
 	convertDefineVariables,
-	validate,
 	type Rule,
 	type ValidationResult,
-	type ValidationEngineError,
-	type DefineVariableForValidation
+	type ValidationEngineError
 } from '@sden99/validation-engine';
 import { normalizeDatasetId } from '@sden99/dataset-domain';
-import { ruleState } from '$lib/core/state/ruleState.svelte';
-import { browser } from '$app/environment';
-import { logError, logWarning } from '$lib/core/state/errorState.svelte';
-import type { SerializedValidationResult, ValidateResponse } from '$lib/core/services/validation.worker';
-import ValidationWorker from '$lib/core/services/validation.worker?worker';
+import { logError } from '$lib/core/state/errorState.svelte';
+
+import { validateViaWorker } from './validationWorkerBridge';
+import { prepareRulesForDataset } from './rulePreparation';
+import { checkStructuralMismatches } from './structuralChecks';
 
 // =============================================================================
 // Types
@@ -46,240 +46,9 @@ let resultsByDataset = $state<Map<string, ValidationCacheEntry>>(new Map());
 let isValidating = $state(false);
 let lastError = $state<string | null>(null);
 
-// Worker instance (lazy-initialized)
-let worker: Worker | null = null;
-let requestId = 0;
-let pendingRequests = new Map<number, {
-	datasetId: string;
-	resolve: (result: { results: ValidationResult[]; errors: ValidationEngineError[] }) => void;
-}>();
-
-function getWorker(): Worker | null {
-	if (!browser) return null;
-	if (!worker) {
-		try {
-			worker = new ValidationWorker();
-			worker.onmessage = handleWorkerMessage;
-			worker.onerror = (err) => {
-				console.error('[ValidationService] Worker error:', err);
-				logWarning('Validation worker error — results may be incomplete');
-			};
-		} catch (e) {
-			console.error('[ValidationService] Failed to create worker:', e);
-			return null;
-		}
-	}
-	return worker;
-}
-
-function handleWorkerMessage(e: MessageEvent<ValidateResponse>) {
-	const { type, id, payload } = e.data;
-	if (type !== 'VALIDATE_RESULT') return;
-
-	const pending = pendingRequests.get(id);
-	if (!pending) return;
-	pendingRequests.delete(id);
-
-	// Deserialize: convert Record<string, number> back to Map<string, number>
-	const results: ValidationResult[] = payload.results.map(deserializeResult);
-	pending.resolve({ results, errors: payload.errors });
-}
-
-function deserializeResult(sr: SerializedValidationResult): ValidationResult {
-	const result: ValidationResult = {
-		ruleId: sr.ruleId,
-		columnId: sr.columnId,
-		severity: sr.severity,
-		issueCount: sr.issueCount,
-		affectedRows: sr.affectedRows,
-		message: sr.message
-	};
-	if (sr.details) {
-		result.details = { rule: sr.details.rule };
-		if (sr.details.invalidValues) {
-			result.details.invalidValues = new Map(Object.entries(sr.details.invalidValues).map(
-				([k, v]) => [k, v as number]
-			));
-		}
-	}
-	return result;
-}
-
-function validateViaWorker(
-	datasetId: string,
-	data: Record<string, unknown>[],
-	rules: Rule[],
-	domain: string
-): Promise<{ results: ValidationResult[]; errors: ValidationEngineError[] }> {
-	const w = getWorker();
-	if (!w) {
-		// Fallback: run synchronously if worker unavailable (SSR or error)
-		const errors: ValidationEngineError[] = [];
-		const results = validate(data, rules, domain, errors);
-		return Promise.resolve({ results, errors });
-	}
-
-	const id = ++requestId;
-	return new Promise((resolve) => {
-		pendingRequests.set(id, { datasetId, resolve });
-		w.postMessage({
-			type: 'VALIDATE',
-			id,
-			payload: { datasetId, data, rules, domain }
-		});
-	});
-}
-
 // =============================================================================
-// Internal Functions (Main Thread)
+// Core Orchestration
 // =============================================================================
-
-/**
- * Deduplicate rules: imported rules take priority over auto-generated ones
- * when they target the same variable with the same rule type.
- */
-function deduplicateRules(autoRules: Rule[], importedRules: Rule[]): Rule[] {
-	if (importedRules.length === 0) return autoRules;
-
-	const importedKeys = new Set<string>();
-	for (const rule of importedRules) {
-		const variable = rule.Target_Variable || '';
-		const type = rule.Rule_Type || '';
-		if (variable) {
-			importedKeys.add(`${variable}|${type}`);
-		}
-	}
-
-	const filteredAuto = autoRules.filter((rule) => {
-		const variable = rule.Target_Variable || '';
-		const type = rule.Rule_Type || '';
-		if (variable && importedKeys.has(`${variable}|${type}`)) {
-			return false;
-		}
-		return true;
-	});
-
-	return [...filteredAuto, ...importedRules];
-}
-
-/**
- * Prepare rules for a dataset (main thread — needs state access).
- * Returns the rules to send to the worker + validation vars for structural checks.
- */
-function prepareRulesForDataset(
-	domainName: string,
-	define: import('@sden99/cdisc-types/define-xml').ParsedDefineXML
-): { rules: Rule[]; validationVars: DefineVariableForValidation[] } | null {
-	const itemGroup = dataState.getItemGroupMetadata(domainName);
-	if (!itemGroup) return null;
-
-	const defineVars = convertToDefineVariables(itemGroup, define);
-	const validationVars = convertDefineVariables(defineVars, domainName);
-	if (validationVars.length === 0) return null;
-
-	const autoRules = generateRulesFromDefine(validationVars, domainName);
-	const importedForDomain = ruleState
-		.getRulesForDomain(domainName)
-		.filter((r) => r.Executability === 'Fully Executable');
-	const rules = deduplicateRules(autoRules, importedForDomain);
-
-	return { rules, validationVars };
-}
-
-/**
- * Check for structural mismatches between Define-XML variables and actual data columns.
- */
-function checkStructuralMismatches(
-	datasetData: Record<string, unknown>[],
-	defineVars: DefineVariableForValidation[],
-	domain: string
-): ValidationResult[] {
-	if (datasetData.length === 0) return [];
-
-	const results: ValidationResult[] = [];
-	const dataColumns = new Set(Object.keys(datasetData[0]));
-	const defineNames = new Set(defineVars.map((v) => v.name));
-
-	for (const name of defineNames) {
-		if (!dataColumns.has(name)) {
-			results.push({
-				ruleId: `AUTO.MISSING_VAR.${domain}.${name}`,
-				columnId: name,
-				severity: 'warning',
-				issueCount: 1,
-				affectedRows: [],
-				message: `Variable ${name} is defined in the Define-XML but missing from the dataset`,
-				details: {
-					invalidValues: new Map(),
-					rule: {
-						Core: { Id: `AUTO.MISSING_VAR.${domain}.${name}`, Version: '1', Status: 'Draft' },
-						Authorities: [{
-							Organization: 'Auto-Generated',
-							Standards: [{
-								Name: domain,
-								Version: '1.0',
-								References: [{
-									Rule_Identifier: { Id: `AUTO.MISSING_VAR.${domain}.${name}`, Version: '1' },
-									Origin: 'Define-XML Auto-Generation',
-									Version: '1.0'
-								}]
-							}]
-						}],
-						Description: `${name} is defined in metadata but not present in data`,
-						Sensitivity: 'Dataset',
-						Executability: 'Fully Executable',
-						Rule_Type: 'Missing Variable',
-						Target_Variable: name,
-						Scope: { Domains: { Include: [domain] } },
-						Check: { name, operator: 'empty' },
-						Outcome: { Message: `Variable ${name} missing from dataset`, Output_Variables: [name] }
-					}
-				}
-			});
-		}
-	}
-
-	for (const col of dataColumns) {
-		if (!defineNames.has(col)) {
-			results.push({
-				ruleId: `AUTO.UNDOCUMENTED_VAR.${domain}.${col}`,
-				columnId: col,
-				severity: 'info',
-				issueCount: 1,
-				affectedRows: [],
-				message: `Variable ${col} exists in the dataset but is not documented in the Define-XML`,
-				details: {
-					invalidValues: new Map(),
-					rule: {
-						Core: { Id: `AUTO.UNDOCUMENTED_VAR.${domain}.${col}`, Version: '1', Status: 'Draft' },
-						Authorities: [{
-							Organization: 'Auto-Generated',
-							Standards: [{
-								Name: domain,
-								Version: '1.0',
-								References: [{
-									Rule_Identifier: { Id: `AUTO.UNDOCUMENTED_VAR.${domain}.${col}`, Version: '1' },
-									Origin: 'Define-XML Auto-Generation',
-									Version: '1.0'
-								}]
-							}]
-						}],
-						Description: `${col} is present in data but not defined in metadata`,
-						Sensitivity: 'Dataset',
-						Executability: 'Fully Executable',
-						Rule_Type: 'Undocumented Variable',
-						Target_Variable: col,
-						Scope: { Domains: { Include: [domain] } },
-						Check: { name: col, operator: 'non_empty' },
-						Outcome: { Message: `Variable ${col} not in Define-XML`, Output_Variables: [col] }
-					}
-				}
-			});
-		}
-	}
-
-	return results;
-}
 
 /**
  * Validate ALL datasets that have a matching Define-XML.
@@ -322,7 +91,7 @@ async function validateAllDatasets(): Promise<void> {
 			fileId: string;
 			data: Record<string, unknown>[];
 			rules: Rule[];
-			validationVars: DefineVariableForValidation[];
+			validationVars: import('@sden99/validation-engine').DefineVariableForValidation[];
 			domainName: string;
 		}> = [];
 

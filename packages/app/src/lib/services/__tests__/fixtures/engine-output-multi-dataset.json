@@ -1,0 +1,63 @@
+{
+  "Conformance_Details": {
+    "Standard": "sdtmig",
+    "Version": "3-4",
+    "CORE_Engine_Version": "0.8.0",
+    "Total_Runtime": "25.0s"
+  },
+  "Dataset_Details": [
+    { "filename": "dm.xpt", "label": "Demographics", "length": 150 },
+    { "filename": "ae.xpt", "label": "Adverse Events", "length": 500 }
+  ],
+  "Issue_Details": [
+    {
+      "core_id": "CG0001",
+      "dataset": "dm.xpt",
+      "row": 3,
+      "variables": ["RFSTDTC"],
+      "message": "RFSTDTC should not be null",
+      "executability": "Record"
+    },
+    {
+      "core_id": "CG0015",
+      "dataset": "ae.xpt",
+      "row": 10,
+      "variables": ["AESTDTC", "AEENDTC"],
+      "message": "AEENDTC must be >= AESTDTC",
+      "executability": "Record"
+    },
+    {
+      "core_id": "CG0015",
+      "dataset": "ae.xpt",
+      "row": 22,
+      "variables": ["AESTDTC", "AEENDTC"],
+      "message": "AEENDTC must be >= AESTDTC",
+      "executability": "Record"
+    },
+    {
+      "core_id": "CG0020",
+      "dataset": "ae.xpt",
+      "row": null,
+      "variables": [],
+      "message": "Dataset-level metadata check",
+      "executability": "Dataset"
+    }
+  ],
+  "Rules_Report": [
+    {
+      "core_id": "CG0001",
+      "message": "Reference Start Date/Time check",
+      "status": "executed"
+    },
+    {
+      "core_id": "CG0015",
+      "message": "End date must be on or after start date",
+      "status": "executed"
+    },
+    {
+      "core_id": "CG0020",
+      "message": "Dataset metadata conformance",
+      "status": "executed"
+    }
+  ]
+}

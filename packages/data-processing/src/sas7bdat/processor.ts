@@ -1,4 +1,4 @@
-import type { Sas7bdatProcessingResult, ValidationResult } from '../types/processing';
+import type { Sas7bdatProcessingResult, FileValidationResult } from '../types/processing';
 
 /**
  * Pure SAS7bdat data processor - no worker pool, no progress callbacks
@@ -82,7 +82,7 @@ export class Sas7bdatDataProcessor {
 	 * @param buffer - The SAS7bdat file buffer to validate
 	 * @returns Validation result
 	 */
-	validate(buffer: ArrayBuffer): ValidationResult {
+	validate(buffer: ArrayBuffer): FileValidationResult {
 		// Basic validation
 		if (!buffer || buffer.byteLength === 0) {
 			return {
@@ -167,7 +167,7 @@ export async function processSas7bdatBuffer(
  * @param buffer - SAS7bdat buffer to validate
  * @returns Validation result
  */
-export function validateSas7bdatBuffer(buffer: ArrayBuffer): ValidationResult {
+export function validateSas7bdatBuffer(buffer: ArrayBuffer): FileValidationResult {
 	const processor = new Sas7bdatDataProcessor();
 	return processor.validate(buffer);
 }

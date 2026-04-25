@@ -14,7 +14,7 @@ export type {
   DatasetJsonProcessingResult,
   GraphData,
   EnhancedDefineXMLData,
-  ValidationResult
+  FileValidationResult
 } from './types/processing';
 
 // Re-export the graphXML function and interfaces

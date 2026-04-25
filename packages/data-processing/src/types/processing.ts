@@ -111,8 +111,8 @@ export interface DefineXMLProcessingResult extends BaseProcessingResult {
 // Union type for all processing results
 export type ProcessingResult = Sas7bdatProcessingResult | DefineXMLProcessingResult | DatasetJsonProcessingResult;
 
-// Validation result interface
-export interface ValidationResult {
+// File validation result interface (distinct from validation-engine's ValidationResult)
+export interface FileValidationResult {
 	valid: boolean;
 	error?: string;
 	fileType?: string;

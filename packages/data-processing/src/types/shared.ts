@@ -100,7 +100,7 @@ export interface SearchCriteria {
 	descriptionPattern?: RegExp;
 }
 
-export interface ValidationResult {
+export interface GraphValidationResult {
 	level: 'error' | 'warning' | 'info';
 	message: string;
 	nodeId?: string;

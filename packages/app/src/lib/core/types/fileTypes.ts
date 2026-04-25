@@ -9,14 +9,14 @@ export enum FileType {
 	YAML_RULE = 'yaml_rule'
 }
 
-export interface ValidationResult {
+export interface FileValidationResult {
 	valid: boolean;
 	error?: string;
 	fileType?: FileType;
 }
 
 export interface FileProcessor {
-	validateFile(file: File): ValidationResult;
+	validateFile(file: File): FileValidationResult;
 	processFile(
 		file: File,
 		onProgress?: (state: DatasetLoadingState) => void

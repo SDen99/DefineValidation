@@ -1,6 +1,6 @@
 // packages/app/src/lib/core/processors/defineXML/DefineXMLProcessor.ts
 import { DefineXMLDataProcessor } from '@sden99/data-processing/definexml';
-import { FileType, type FileProcessor, type ValidationResult } from '$lib/core/types/fileTypes';
+import { FileType, type FileProcessor, type FileValidationResult } from '$lib/core/types/fileTypes';
 import { graphXML } from '@sden99/data-processing';
 import type { DatasetLoadingState } from '$lib/core/types/types';
 import type { ProcessingResult } from '@sden99/data-processing/types';
@@ -8,7 +8,7 @@ import type { ProcessingResult } from '@sden99/data-processing/types';
 export class DefineXMLProcessor implements FileProcessor {
 	private dataProcessor = new DefineXMLDataProcessor();
 
-	validateFile(file: File): ValidationResult {
+	validateFile(file: File): FileValidationResult {
 		if (!file.name.toLowerCase().endsWith('.xml')) {
 			return {
 				valid: false,

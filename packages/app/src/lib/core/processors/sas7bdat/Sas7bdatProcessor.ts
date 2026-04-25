@@ -1,6 +1,6 @@
 // packages/app/src/lib/core/processors/sas7bdat/Sas7bdatProcessor.ts
 import type { ProcessingResult } from '@sden99/data-processing/types';
-import { FileType, type FileProcessor, type ValidationResult } from '$lib/core/types/fileTypes';
+import { FileType, type FileProcessor, type FileValidationResult } from '$lib/core/types/fileTypes';
 import type { DatasetLoadingState } from '$lib/core/types/types';
 import type { WorkerPool } from '$lib/core/services/workerPool';
 
@@ -19,7 +19,7 @@ export class Sas7bdatProcessor implements FileProcessor {
 		this.workerPool = workerPool;
 	}
 
-	validateFile(file: File): ValidationResult {
+	validateFile(file: File): FileValidationResult {
 		if (file.size > FILE_CONSTRAINTS.MAX_SIZE) {
 			return {
 				valid: false,

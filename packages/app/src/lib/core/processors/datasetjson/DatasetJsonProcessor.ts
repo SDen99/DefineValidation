@@ -1,7 +1,7 @@
 // packages/app/src/lib/core/processors/datasetjson/DatasetJsonProcessor.ts
 import type { ProcessingResult } from '@sden99/data-processing/types';
 import { DatasetJsonProcessor as DatasetJsonDataProcessor } from '@sden99/data-processing';
-import { FileType, type FileProcessor, type ValidationResult } from '$lib/core/types/fileTypes';
+import { FileType, type FileProcessor, type FileValidationResult } from '$lib/core/types/fileTypes';
 import type { DatasetLoadingState } from '$lib/core/types/types';
 
 const FILE_CONSTRAINTS = {
@@ -10,7 +10,7 @@ const FILE_CONSTRAINTS = {
 } as const;
 
 export class DatasetJsonProcessor implements FileProcessor {
-	validateFile(file: File): ValidationResult {
+	validateFile(file: File): FileValidationResult {
 		if (file.size > FILE_CONSTRAINTS.MAX_SIZE) {
 			return {
 				valid: false,

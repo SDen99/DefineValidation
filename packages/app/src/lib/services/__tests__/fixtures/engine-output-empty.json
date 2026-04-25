@@ -1,0 +1,20 @@
+{
+  "Conformance_Details": {
+    "Standard": "sdtmig",
+    "Version": "3-4",
+    "CORE_Engine_Version": "0.8.0",
+    "Total_Runtime": "5.0s"
+  },
+  "Dataset_Details": [
+    { "filename": "dm.xpt", "label": "Demographics", "length": 50 }
+  ],
+  "Issue_Summary": [],
+  "Issue_Details": [],
+  "Rules_Report": [
+    {
+      "core_id": "CG0001",
+      "message": "All checks passed",
+      "status": "executed"
+    }
+  ]
+}

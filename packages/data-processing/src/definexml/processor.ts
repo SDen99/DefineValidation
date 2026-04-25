@@ -1,6 +1,6 @@
 import { parseDefineXML } from './parser';
 import { graphXML } from '../graphXML';
-import type { DefineXMLProcessingResult, ValidationResult } from '../types/processing';
+import type { DefineXMLProcessingResult, FileValidationResult } from '../types/processing';
 
 /**
  * Pure DefineXML data processor - no file I/O, no progress callbacks
@@ -100,7 +100,7 @@ export class DefineXMLDataProcessor {
 	 * @param xmlString - The DefineXML content to validate
 	 * @returns Validation result
 	 */
-	validate(xmlString: string): ValidationResult {
+	validate(xmlString: string): FileValidationResult {
 		// Basic validation
 		if (!xmlString || typeof xmlString !== 'string') {
 			return {
@@ -218,7 +218,7 @@ export async function processDefineXMLString(xmlString: string): Promise<DefineX
  * @param xmlString - DefineXML content to validate
  * @returns Validation result
  */
-export function validateDefineXMLString(xmlString: string): ValidationResult {
+export function validateDefineXMLString(xmlString: string): FileValidationResult {
 	const processor = new DefineXMLDataProcessor();
 	return processor.validate(xmlString);
 }

@@ -1,0 +1,40 @@
+{
+  "Conformance_Details": {
+    "Standard": "sdtmig",
+    "Version": "3-4",
+    "CORE_Engine_Version": "0.8.0",
+    "Total_Runtime": "12.5s"
+  },
+  "Dataset_Details": [
+    { "filename": "dm.xpt", "label": "Demographics", "length": 150 }
+  ],
+  "Issue_Summary": [
+    { "Rule": "CG0001", "Datasets": 1, "Errors": 2 }
+  ],
+  "Issue_Details": [
+    {
+      "core_id": "CG0001",
+      "dataset": "dm.xpt",
+      "row": 5,
+      "variables": ["RFSTDTC"],
+      "message": "RFSTDTC should not be null for enrolled subjects",
+      "executability": "Record"
+    },
+    {
+      "core_id": "CG0001",
+      "dataset": "dm.xpt",
+      "row": 12,
+      "variables": ["RFSTDTC"],
+      "message": "RFSTDTC should not be null for enrolled subjects",
+      "executability": "Record"
+    }
+  ],
+  "Rules_Report": [
+    {
+      "core_id": "CG0001",
+      "cdisc_rule_id": "CG0001",
+      "message": "Reference Start Date/Time of Subject should not be null",
+      "status": "executed"
+    }
+  ]
+}

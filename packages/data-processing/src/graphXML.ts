@@ -17,7 +17,7 @@ import type {
 	ValueLevelMetadata,
 	EnhancedItemGroup,
 	SearchCriteria,
-	ValidationResult
+	GraphValidationResult
 } from './types/shared';
 
 
@@ -400,6 +400,6 @@ export interface EnhancedDefineXML extends EnhancedDefineXMLData {
 	// Analysis methods
 	getDatasetDependencies(datasetOID: string): string[];
 	getVariableDependencies(variableOID: string): string[];
-	validateIntegrity(): ValidationResult[];
+	validateIntegrity(): GraphValidationResult[];
 }
 
