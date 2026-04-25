@@ -1,7 +1,7 @@
 // src/lib/types/define-xml/common.ts
 
-/** CDISC Define-XML standard type (SDTM or ADaM) */
-export type DefineType = 'SDTM' | 'ADaM';
+/** CDISC Define-XML standard type */
+export type DefineType = 'SDTM' | 'ADaM' | 'SEND';
 
 /**
  * Base interface for Define-XML entities that have an OID

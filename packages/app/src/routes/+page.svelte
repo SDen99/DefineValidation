@@ -18,6 +18,7 @@
 	import * as appState from '$lib/core/state/appState.svelte.ts';
 
 	import { validationService } from '$lib/services/validationService.svelte';
+	import { cdiscEngineService, clearStashedFiles } from '$lib/services/cdiscEngineService.svelte';
 
 	let { data } = $props();
 	let uploadController = $state<FileUploadController | null>(null);
@@ -25,10 +26,47 @@
 	// Shared reference to the ClinicalVirtualTable for sidebar integration
 	let clinicalTableRef = $state<any>(null);
 
+	let engineValidationTimer: ReturnType<typeof setTimeout> | undefined;
+	let engineValidationInFlight = false;
+
+	// Debug: expose validation service on window for console inspection
+	if (browser) {
+		(window as any).__validationService = validationService;
+		(window as any).__engineService = cdiscEngineService;
+	}
+
+	async function runEngineValidation() {
+		if (engineValidationInFlight) {
+			console.warn('[+page] Engine validation already in-flight, skipping');
+			return;
+		}
+		engineValidationInFlight = true;
+		console.warn('[+page] Engine validation timer fired');
+		try {
+			const results = await cdiscEngineService.validate();
+			if (results.size > 0) {
+				validationService.addEngineResults(results);
+				console.warn('[+page] Engine results merged. Check cache via: window.__validationService');
+			}
+		} catch (e) {
+			console.warn('[+page] Engine validation failed (non-fatal):', e);
+		} finally {
+			clearStashedFiles();
+			engineValidationInFlight = false;
+		}
+	}
+
 	// Initialize controller when browser and service container are available
 	if (browser) {
 		uploadController = new FileUploadController(data.initialData?.container || null, {
-			onDatasetReady: () => validationService.revalidate()
+			onDatasetReady: () => {
+				setTimeout(() => validationService.revalidate(), 0);
+
+				// Server-side engine validation (debounced — wait for batch to finish)
+				console.warn('[+page] onDatasetReady: scheduling engine validation in 2s');
+				clearTimeout(engineValidationTimer);
+				engineValidationTimer = setTimeout(() => runEngineValidation(), 2000);
+			}
 		});
 	}
 

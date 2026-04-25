@@ -88,7 +88,7 @@ export const deleteDataset = async (id: string) => {
 	await stateManager.deleteDataset(id);
 };
 
-export const deleteDefineXML = async (type: 'SDTM' | 'ADaM') => {
+export const deleteDefineXML = async (type: 'SDTM' | 'ADaM' | 'SEND') => {
 	await stateManager.deleteDefineXML(type);
 };
 
@@ -146,7 +146,7 @@ export const getItemGroupMetadata = (name: string | null | undefined) => {
 	const defineXMLInfo = stateManager.getDefineXmlInfo();
 	const normalizedName = normalizeDatasetId(name);
 
-	const allDefines = [defineXMLInfo.SDTM, defineXMLInfo.ADaM].filter(Boolean);
+	const allDefines = [defineXMLInfo.SDTM, defineXMLInfo.ADaM, defineXMLInfo.SEND].filter(Boolean);
 	for (const define of allDefines) {
 		if (!define?.ItemGroups) continue;
 		const found = define.ItemGroups.find(
@@ -177,6 +177,9 @@ export const getDatasetState = (fileName: string) => {
 			(g) => normalizeDatasetId(g.SASDatasetName || g.Name || '') === normalizedName
 		) ||
 		!!defineXMLInfo.ADaM?.ItemGroups?.some(
+			(g) => normalizeDatasetId(g.SASDatasetName || g.Name || '') === normalizedName
+		) ||
+		!!defineXMLInfo.SEND?.ItemGroups?.some(
 			(g) => normalizeDatasetId(g.SASDatasetName || g.Name || '') === normalizedName
 		);
 
@@ -216,6 +219,13 @@ export const getActiveDefineInfoWithItemGroup = () => {
 	) {
 		defineData = defineXMLInfo.SDTM;
 		defineFileId = defineXMLInfo.sdtmId;
+	} else if (
+		defineXMLInfo.SEND?.ItemGroups.some(
+			(g) => normalizeDatasetId(g.SASDatasetName || g.Name || '') === normalizedName
+		)
+	) {
+		defineData = defineXMLInfo.SEND;
+		defineFileId = defineXMLInfo.sendId;
 	}
 
 	if (!defineData || !defineFileId) {

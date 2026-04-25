@@ -24,8 +24,10 @@ export class MetadataStateProviderAdapter implements MetadataStateProvider {
 		return {
 			SDTM: defineInfo.SDTM || null,
 			ADaM: defineInfo.ADaM || null,
+			SEND: defineInfo.SEND || null,
 			sdtmId: defineInfo.sdtmId || undefined,
-			adamId: defineInfo.adamId || undefined
+			adamId: defineInfo.adamId || undefined,
+			sendId: defineInfo.sendId || undefined
 		};
 	}
 

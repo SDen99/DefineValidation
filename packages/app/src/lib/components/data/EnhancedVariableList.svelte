@@ -34,8 +34,8 @@
 		const itemGroup = dataState.getItemGroupMetadata(name);
 		if (!itemGroup) return { itemGroup: null, define: null, defineType: null as DefineType | null };
 		const defineXmlInfo = dataState.getDefineXmlInfo();
-		const define = defineXmlInfo.ADaM ?? defineXmlInfo.SDTM;
-		const defineType: DefineType | null = defineXmlInfo.ADaM ? 'ADaM' : defineXmlInfo.SDTM ? 'SDTM' : null;
+		const define = defineXmlInfo.ADaM ?? defineXmlInfo.SDTM ?? defineXmlInfo.SEND;
+		const defineType: DefineType | null = defineXmlInfo.ADaM ? 'ADaM' : defineXmlInfo.SDTM ? 'SDTM' : defineXmlInfo.SEND ? 'SEND' : null;
 		return { itemGroup, define, defineType };
 	});
 

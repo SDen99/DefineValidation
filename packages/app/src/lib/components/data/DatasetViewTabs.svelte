@@ -2,7 +2,6 @@
 	import { Tabs, TabsContent, TabsList, TabsTrigger } from '@sden99/ui-components';
 	import { ClinicalDataTableV3, type SerializedFilter, type SortConfig, type ColumnValidationInfo, type ValidationCheckDetail } from '@sden99/data-table-v3';
 	import { convertToDefineVariables } from '$lib/adapters/defineVariablesAdapter';
-
 	// --- NEW ARCHITECTURE IMPORTS ---
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
 	import * as appState from '$lib/core/state/appState.svelte.ts';
@@ -30,7 +29,7 @@
 		const itemGroup = dataState.getItemGroupMetadata(name);
 		if (!itemGroup) return [];
 		const defineXmlInfo = dataState.getDefineXmlInfo();
-		const define = defineXmlInfo.ADaM ?? defineXmlInfo.SDTM;
+		const define = defineXmlInfo.ADaM ?? defineXmlInfo.SDTM ?? defineXmlInfo.SEND;
 		return convertToDefineVariables(itemGroup, define);
 	});
 
@@ -59,16 +58,22 @@
 	}
 
 	// --- VALIDATION BADGES ---
+	// Single derived to avoid multiple reactive subscriptions to resultsByDataset
 
 	const validationResultsMap = $derived.by(() => {
-		if (!currentDatasetId) return new Map<string, ColumnValidationInfo>();
+		const columnMap = new Map<string, ColumnValidationInfo>();
+		if (!currentDatasetId) return columnMap;
 		const results = validationService.getResultsForDataset(currentDatasetId);
-		const map = new Map<string, ColumnValidationInfo>();
+		if (results.length === 0) return columnMap;
+
 		for (const result of results) {
-			const existing = map.get(result.columnId);
+			// Skip results with no column (dataset-level engine checks are on the Rules page)
+			if (!result.columnId) continue;
+
+			const existing = columnMap.get(result.columnId);
 			const check: ValidationCheckDetail = {
 				ruleId: result.ruleId,
-				checkType: result.details?.rule?.Rule_Type || 'Check',
+				checkType: result.details?.rule?.Rule_Type || (result.ruleId.startsWith('ENGINE.') ? 'Engine' : 'Check'),
 				issueCount: result.issueCount,
 				severity: result.severity,
 				affectedRows: [...result.affectedRows],
@@ -81,7 +86,7 @@
 				else if (result.severity === 'warning' && existing.severity !== 'error') existing.severity = 'warning';
 				existing.checks!.push(check);
 			} else {
-				map.set(result.columnId, {
+				columnMap.set(result.columnId, {
 					issueCount: result.issueCount,
 					severity: result.severity,
 					affectedRows: [...result.affectedRows],
@@ -89,7 +94,7 @@
 				});
 			}
 		}
-		return map;
+		return columnMap;
 	});
 
 	function handleValidationBadgeClick(columnId: string, affectedRows: number[], ruleId?: string) {
@@ -173,9 +178,9 @@
 			<TabsTrigger value="data" class={triggerClass}>{datasetDisplayName}</TabsTrigger>
 		</TabsList>
 
-		<TabsContent value="data" class="mt-0 flex-grow overflow-hidden">
+		<TabsContent value="data" class="mt-0 flex flex-col flex-grow overflow-hidden">
 			{#if selectedDataset?.data && Array.isArray(selectedDataset.data) && currentDatasetId}
-				<div class="h-full w-full" bind:clientHeight={tableContainerHeight}>
+				<div class="min-h-0 w-full flex-1" bind:clientHeight={tableContainerHeight}>
 					<ClinicalDataTableV3
 						bind:this={clinicalTableRef}
 						workerState={workerState.getWorkerStateInterface()}

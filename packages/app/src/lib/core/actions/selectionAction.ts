@@ -36,7 +36,7 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 	}
 
 	// No data file found — check Define-XML for metadata-only domains
-	const { SDTM, ADaM, sdtmId, adamId } = dataState.getDefineXmlInfo();
+	const { SDTM, ADaM, SEND, sdtmId, adamId, sendId } = dataState.getDefineXmlInfo();
 
 	const adamGroup = ADaM?.ItemGroups.find(
 		(g) => normalize(g.SASDatasetName || g.Name) === normalizedName
@@ -54,6 +54,15 @@ function findSource(name: string): { fileId: string; domain: string } | null {
 		if (!sdtmId) return null;
 		const originalName = sdtmGroup.SASDatasetName || sdtmGroup.Name || normalizedName;
 		return { fileId: sdtmId, domain: originalName };
+	}
+
+	const sendGroup = SEND?.ItemGroups.find(
+		(g) => normalize(g.SASDatasetName || g.Name) === normalizedName
+	);
+	if (sendGroup) {
+		if (!sendId) return null;
+		const originalName = sendGroup.SASDatasetName || sendGroup.Name || normalizedName;
+		return { fileId: sendId, domain: originalName };
 	}
 
 	return null;

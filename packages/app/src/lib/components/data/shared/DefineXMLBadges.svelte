@@ -7,12 +7,13 @@
 
 	// --- LOCAL COMPONENT STATE ---
 	let dialogOpen = $state(false);
-	let defineTypeToDelete = $state<'SDTM' | 'ADaM' | null>(null);
+	let defineTypeToDelete = $state<'SDTM' | 'ADaM' | 'SEND' | null>(null);
 
 	// --- REACTIVE DERIVED STATE ---
 	let datasets = $derived(dataState.getDatasets());
 	let hasSDTM = $derived(appState.getHasSDTM(datasets));
 	let hasADaM = $derived(appState.getHasADaM(datasets));
+	let hasSEND = $derived(appState.getHasSEND(datasets));
 
 	// --- COMPUTED VALUES ---
 	const dialogTitle = $derived('Delete Define.xml');
@@ -23,7 +24,7 @@
 	);
 
 	// --- HANDLER FUNCTIONS ---
-	function handleDeleteClick(type: 'SDTM' | 'ADaM') {
+	function handleDeleteClick(type: 'SDTM' | 'ADaM' | 'SEND') {
 		defineTypeToDelete = type;
 		dialogOpen = true;
 	}
@@ -79,6 +80,24 @@
 				onclick={() => handleDeleteClick('ADaM')}
 				aria-label="Delete ADaM Define.xml"
 				title="Delete ADaM Define.xml"
+			>
+				<X class="h-3 w-3" />
+			</button>
+		</span>
+	{/if}
+
+	{#if hasSEND}
+		<span
+			class="inline-flex items-center gap-1 rounded-md px-2.5 py-0.5 text-xs font-semibold transition-colors bg-primary/60 text-primary-foreground hover:bg-primary/50"
+			title="SEND Define.xml loaded"
+		>
+			SEND
+			<button
+				type="button"
+				class="ml-1 h-4 w-4 rounded-full p-0.5 hover:bg-primary-foreground/10 focus:bg-primary-foreground/10 focus:outline-none transition-colors"
+				onclick={() => handleDeleteClick('SEND')}
+				aria-label="Delete SEND Define.xml"
+				title="Delete SEND Define.xml"
 			>
 				<X class="h-3 w-3" />
 			</button>

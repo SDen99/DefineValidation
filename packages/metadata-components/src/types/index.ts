@@ -37,8 +37,10 @@ export interface MetadataStateProvider {
 	getDefineXmlInfo(): {
 		SDTM?: any;
 		ADaM?: any;
+		SEND?: any;
 		sdtmId?: string;
 		adamId?: string;
+		sendId?: string;
 	};
 	getActiveDefineInfo(): {
 		define?: {

@@ -16,7 +16,7 @@ export interface ProcessingStats {
 }
 
 export interface DefineAssociation {
-	type: 'SDTM' | 'ADaM';
+	type: 'SDTM' | 'ADaM' | 'SEND';
 	defineId: string;
 	timestamp: number;
 }
@@ -55,6 +55,7 @@ export interface Dataset {
 	processingStats?: ProcessingStats;
 	ADaM?: boolean;
 	SDTM?: boolean;
+	SEND?: boolean;
 	// Add any other optional properties that might be needed
 	timestamp?: number;
 }

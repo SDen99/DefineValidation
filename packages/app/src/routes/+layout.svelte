@@ -16,6 +16,7 @@
 	import { metadataStateProvider } from '$lib/adapters/MetadataStateProviderAdapter';
 	import { validationService } from '$lib/services/validationService.svelte';
 	import { ruleState } from '$lib/core/state/ruleState.svelte';
+	import { cdiscEngineService, clearStashedFiles } from '$lib/services/cdiscEngineService.svelte';
 
 	let { data, children } = $props();
 
@@ -26,6 +27,25 @@
 	let dragCounter = 0;
 	let droppedFileCount = $state(0);
 	let dropNotificationTimer: ReturnType<typeof setTimeout> | undefined;
+	let engineValidationTimer: ReturnType<typeof setTimeout> | undefined;
+	let engineValidationInFlight = false;
+
+	async function runEngineValidation(label: string) {
+		if (engineValidationInFlight) return;
+		engineValidationInFlight = true;
+		console.warn(`[${label}] Engine validation fired`);
+		try {
+			const results = await cdiscEngineService.validate();
+			if (results.size > 0) {
+				validationService.addEngineResults(results);
+			}
+		} catch (e) {
+			console.warn(`[${label}] Engine validation failed (non-fatal):`, e);
+		} finally {
+			clearStashedFiles();
+			engineValidationInFlight = false;
+		}
+	}
 
 	// Expose appState on window in dev mode for console toggling
 	if (browser && dev) {
@@ -72,7 +92,15 @@
 			dataState.initializeWorker(worker);
 			initializeMetadataComponents(metadataStateProvider);
 			fileManager = new FileImportManager(data.initialData.container, {
-				onDatasetReady: () => setTimeout(() => validationService.revalidate(), 0)
+				onDatasetReady: () => {
+					// Client-side validation (immediate, deferred to next tick)
+					setTimeout(() => validationService.revalidate(), 0);
+
+					// Server-side engine validation (debounced — wait for batch to finish)
+					console.warn('[layout] onDatasetReady: scheduling engine validation in 2s');
+					clearTimeout(engineValidationTimer);
+					engineValidationTimer = setTimeout(() => runEngineValidation('layout'), 2000);
+				}
 			});
 
 			// Mark interactive — app shell renders now, remaining state loads reactively
@@ -254,6 +282,14 @@
 		<div class="bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-lg">
 			<div class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
 			Processing {droppedFileCount} {droppedFileCount === 1 ? 'file' : 'files'}...
+		</div>
+	</div>
+{/if}
+{#if cdiscEngineService.isRunning}
+	<div class="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-right-2 duration-200">
+		<div class="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 shadow-md dark:border-amber-500/20 dark:bg-amber-950 dark:text-amber-200">
+			<div class="h-3 w-3 animate-spin rounded-full border-2 border-amber-600 border-t-transparent dark:border-amber-400 dark:border-t-transparent"></div>
+			CDISC Engine validating...
 		</div>
 	</div>
 {/if}

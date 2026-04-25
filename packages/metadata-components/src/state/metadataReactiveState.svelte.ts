@@ -55,7 +55,7 @@ export function getActiveVariables(): ValueLevelMetadata[] {
  * Get define XML info from the app's state
  */
 export function getDefineXmlInfo() {
-	if (!stateProvider) return { SDTM: null, ADaM: null };
+	if (!stateProvider) return { SDTM: null, ADaM: null, SEND: null };
 	return stateProvider.getDefineXmlInfo();
 }
 

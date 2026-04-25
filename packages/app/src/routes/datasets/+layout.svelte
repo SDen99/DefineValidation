@@ -6,6 +6,7 @@
 	import { browser } from '$app/environment';
 	import { FileUploadController } from '$lib/core/controllers/FileUploadController.svelte.ts';
 	import { validationService } from '$lib/services/validationService.svelte';
+	import { cdiscEngineService, clearStashedFiles } from '$lib/services/cdiscEngineService.svelte';
 	import EnhancedVariableList from '$lib/components/data/EnhancedVariableList.svelte';
 	import * as dataState from '$lib/core/state/dataState.svelte.ts';
 	import * as appState from '$lib/core/state/appState.svelte.ts';
@@ -16,10 +17,33 @@
 
 	// Initialize file upload controller
 	let uploadController = $state<FileUploadController | null>(null);
+	let engineValidationTimer: ReturnType<typeof setTimeout> | undefined;
+	let engineValidationInFlight = false;
+
+	async function runEngineValidation() {
+		if (engineValidationInFlight) return;
+		engineValidationInFlight = true;
+		try {
+			const results = await cdiscEngineService.validate();
+			if (results.size > 0) {
+				validationService.addEngineResults(results);
+			}
+		} catch (e) {
+			console.warn('[datasets] Engine validation failed (non-fatal):', e);
+		} finally {
+			clearStashedFiles();
+			engineValidationInFlight = false;
+		}
+	}
 
 	if (browser) {
 		uploadController = new FileUploadController(data?.initialData?.container || null, {
-			onDatasetReady: () => validationService.revalidate()
+			onDatasetReady: () => {
+				setTimeout(() => validationService.revalidate(), 0);
+
+				clearTimeout(engineValidationTimer);
+				engineValidationTimer = setTimeout(() => runEngineValidation(), 2000);
+			}
 		});
 	}
 

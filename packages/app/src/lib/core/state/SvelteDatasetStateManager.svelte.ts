@@ -292,7 +292,7 @@ export class SvelteDatasetStateManager {
 		}
 	}
 
-	async deleteDefineXML(type: 'SDTM' | 'ADaM'): Promise<void> {
+	async deleteDefineXML(type: 'SDTM' | 'ADaM' | 'SEND'): Promise<void> {
 		console.log(`[SvelteDatasetStateManager] Deleting ${type} Define.xml`);
 
 		// Find the Define.xml file of the specified type

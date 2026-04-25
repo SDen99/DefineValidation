@@ -12,6 +12,7 @@ import { createDatasetFromProcessingResult as createDataset } from '@sden99/data
 
 import { ruleState } from '$lib/core/state/ruleState.svelte';
 import { logError } from '$lib/core/state/errorState.svelte';
+import { stashFileForEngine } from '$lib/services/cdiscEngineService.svelte';
 
 export const FILE_CONSTRAINTS = {
 	MAX_SIZE: 500 * 1024 * 1024,
@@ -69,6 +70,9 @@ export class FileImportManager {
 	async processFile(file: File): Promise<{ success: boolean; error?: Error }> {
 		const t0 = performance.now();
 		console.warn(`[FileImportManager] processFile START: ${file.name} (${(file.size / 1024).toFixed(0)}KB)`);
+
+		// Stash the raw File object for server-side engine validation
+		stashFileForEngine(file);
 
 		dataState.setLoadingState(file.name, {
 			status: 'processing',

@@ -13,6 +13,7 @@ export interface Dataset {
   processingStats?: ProcessingStats;
   ADaM?: boolean;
   SDTM?: boolean;
+  SEND?: boolean;
 }
 
 export interface DatasetDetails {
@@ -44,13 +45,15 @@ export interface SelectionResult {
 export interface DefineXMLInfo {
   SDTM: ParsedDefineXML | null;
   ADaM: ParsedDefineXML | null;
+  SEND: ParsedDefineXML | null;
   sdtmId: string | null;
   adamId: string | null;
+  sendId: string | null;
 }
 
 export interface ActiveDefineInfo {
   define: ParsedDefineXML | null;
-  type: 'SDTM' | 'ADaM' | null;
+  type: 'SDTM' | 'ADaM' | 'SEND' | null;
 }
 
 export interface AvailableDataset {
@@ -75,5 +78,5 @@ export interface DatasetState {
 export interface DatasetClassification {
   isDefineXML: boolean;
   isTabular: boolean;
-  type: 'SDTM' | 'ADaM' | 'TABULAR' | 'UNKNOWN';
+  type: 'SDTM' | 'ADaM' | 'SEND' | 'TABULAR' | 'UNKNOWN';
 }

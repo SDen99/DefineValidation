@@ -105,12 +105,14 @@ export class DatasetSelectionService {
     const result: DefineXMLInfo = {
       SDTM: null,
       ADaM: null,
+      SEND: null,
       sdtmId: null,
-      adamId: null
+      adamId: null,
+      sendId: null
     };
 
     const allDatasets = this.repository.findAll();
-    
+
     for (const dataset of allDatasets) {
       const defineData = this.extractDefineXMLData(dataset);
       if (defineData && defineData.MetaData?.OID) {
@@ -120,6 +122,9 @@ export class DatasetSelectionService {
         } else if (defineData.MetaData.OID.includes('ADaM')) {
           result.ADaM = defineData;
           result.adamId = dataset.fileName;
+        } else if (defineData.MetaData.OID.includes('SEND')) {
+          result.SEND = defineData;
+          result.sendId = dataset.fileName;
         }
       }
     }
@@ -158,6 +163,13 @@ export class DatasetSelectionService {
         nameMapping.set(normalized, originalName);
       }
     });
+    defineXMLInfo.SEND?.ItemGroups.forEach(group => {
+      const originalName = group.SASDatasetName || group.Name || '';
+      if (originalName) {
+        const normalized = normalize(originalName);
+        nameMapping.set(normalized, originalName);
+      }
+    });
 
     return Array.from(nameMapping.entries())
       .sort(([, a], [, b]) => a.localeCompare(b))
@@ -186,6 +198,9 @@ export class DatasetSelectionService {
     if (findMatch(defineXMLInfo.SDTM)) {
       return { define: defineXMLInfo.SDTM, type: 'SDTM' as const };
     }
+    if (findMatch(defineXMLInfo.SEND)) {
+      return { define: defineXMLInfo.SEND, type: 'SEND' as const };
+    }
 
     return { define: null, type: null };
   }
@@ -213,7 +228,7 @@ export class DatasetSelectionService {
     const hasTabularData = dataset?.data && Array.isArray(dataset.data);
 
     const defineXMLInfo = this.getDefineXMLInfo();
-    const hasDefineXmlData = !!(defineXMLInfo.SDTM || defineXMLInfo.ADaM);
+    const hasDefineXmlData = !!(defineXMLInfo.SDTM || defineXMLInfo.ADaM || defineXMLInfo.SEND);
     const hasMetadata = !!metadata;
 
     return {
@@ -230,12 +245,13 @@ export class DatasetSelectionService {
     return null;
   }
 
-  private determineDefineXMLType(defineData: ParsedDefineXML | null): 'SDTM' | 'ADaM' | null {
+  private determineDefineXMLType(defineData: ParsedDefineXML | null): 'SDTM' | 'ADaM' | 'SEND' | null {
     if (!defineData?.MetaData?.OID) return null;
-    
+
     if (defineData.MetaData.OID.includes('SDTM')) return 'SDTM';
     if (defineData.MetaData.OID.includes('ADaM')) return 'ADaM';
-    
+    if (defineData.MetaData.OID.includes('SEND')) return 'SEND';
+
     return null;
   }
 

@@ -46,6 +46,15 @@ trap 'rm -rf "$TMPDIR"' EXIT
 cp -r "$BUILD_DIR" "$TMPDIR/build"
 cp "$REPO_ROOT/app.sh" "$TMPDIR/app.sh"
 
+# Copy scripts directory (Python engine wrapper)
+if [[ -d "$REPO_ROOT/scripts" ]]; then
+  mkdir -p "$TMPDIR/scripts"
+  cp "$REPO_ROOT/scripts/run_validation.py" "$TMPDIR/scripts/"
+  cp "$REPO_ROOT/scripts/requirements.txt" "$TMPDIR/scripts/" 2>/dev/null || true
+  cp "$REPO_ROOT/scripts/setup.sh" "$TMPDIR/scripts/" 2>/dev/null || true
+  echo "==> Copied scripts/ directory"
+fi
+
 # Minimal package.json for deploy branch
 cat > "$TMPDIR/package.json" <<'PKGJSON'
 {
@@ -71,6 +80,8 @@ cat > "$TMPDIR/.gitignore" <<'GITIGNORE'
 !package.json
 !.nvmrc
 !.gitignore
+!scripts/
+!scripts/**
 GITIGNORE
 
 # --- Switch to deploy branch ---
@@ -93,9 +104,15 @@ cp "$TMPDIR/app.sh" .
 cp "$TMPDIR/package.json" .
 cp "$TMPDIR/.nvmrc" .
 cp "$TMPDIR/.gitignore" .
+if [[ -d "$TMPDIR/scripts" ]]; then
+  cp -r "$TMPDIR/scripts" .
+fi
 
 # --- Commit only deploy artifacts ---
 git add build/ app.sh package.json .nvmrc .gitignore
+if [[ -d scripts ]]; then
+  git add scripts/
+fi
 git commit -m "Deploy $COMMIT_SHA — $TIMESTAMP"
 
 echo "==> Deploy branch updated (from main $COMMIT_SHA)"

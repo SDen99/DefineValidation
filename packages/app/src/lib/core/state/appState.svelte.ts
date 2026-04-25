@@ -101,6 +101,16 @@ export function getHasADaM(datasets: Record<string, any>): boolean {
 	);
 }
 
+export function getHasSEND(datasets: Record<string, any>): boolean {
+	return Object.values(datasets).some(
+		(dataset) =>
+			dataset.data &&
+			typeof dataset.data === 'object' &&
+			'MetaData' in dataset.data &&
+			(dataset.data as any).MetaData?.OID?.includes('SEND')
+	);
+}
+
 // Theme State (optional - could stay separate if you prefer)
 export const theme = $state<{
 	value: {
@@ -419,7 +429,7 @@ export function shouldShowRightSidebar(): boolean {
 }
 
 export function hasAnyDefineXML(datasets: Record<string, any>): boolean {
-	return getHasSDTM(datasets) || getHasADaM(datasets);
+	return getHasSDTM(datasets) || getHasADaM(datasets) || getHasSEND(datasets);
 }
 
 export function getCurrentThemeMode(): 'light' | 'dark' | 'system' {
@@ -461,7 +471,8 @@ export function getUIPreferencesSnapshot(datasets: Record<string, any>) {
 		viewMode: viewMode.value,
 		metadataViewMode: metadataViewMode.value,
 		SDTM: getHasSDTM(datasets),
-		ADaM: getHasADaM(datasets)
+		ADaM: getHasADaM(datasets),
+		SEND: getHasSEND(datasets)
 	};
 }
 
@@ -505,6 +516,7 @@ if (typeof window !== 'undefined') {
 		metadataViewMode,
 		getHasSDTM, // Expose the getter function
 		getHasADaM, // Expose the getter function
+		getHasSEND, // Expose the getter function
 		theme,
 		preferences,
 		// Functions for testing
