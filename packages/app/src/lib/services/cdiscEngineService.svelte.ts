@@ -133,7 +133,8 @@ export async function runEngineValidation(
 
 		const response = await fetch('api/validate', {
 			method: 'POST',
-			body: formData
+			body: formData,
+			credentials: 'same-origin'
 		});
 
 		let data: EngineApiResponse;

@@ -119,8 +119,8 @@ echo "==> Deploy branch updated (from main $COMMIT_SHA)"
 
 # --- Optionally push ---
 if [[ "$PUSH" == true ]]; then
-  echo "==> Pushing deploy branch to public repo..."
-  git push -u public deploy:main
+  echo "==> Pushing deploy branch to domino repo..."
+  git push -u domino deploy:main
 fi
 
 # --- Return to main ---
