@@ -131,7 +131,7 @@ export async function runEngineValidation(
 			`(${standard} v${version}, ${rules.length} rules)`
 		);
 
-		const response = await fetch('/api/validate', {
+		const response = await fetch('api/validate', {
 			method: 'POST',
 			body: formData
 		});
