@@ -16,7 +16,7 @@
 	import { metadataStateProvider } from '$lib/adapters/MetadataStateProviderAdapter';
 	import { validationService } from '$lib/services/validationService.svelte';
 	import { ruleState } from '$lib/core/state/ruleState.svelte';
-	import { cdiscEngineService, clearStashedFiles } from '$lib/services/cdiscEngineService.svelte';
+	import { cdiscEngineService, runFullValidation } from '$lib/services/cdiscEngineService.svelte';
 
 	let { data, children } = $props();
 
@@ -30,19 +30,37 @@
 	let engineValidationTimer: ReturnType<typeof setTimeout> | undefined;
 	let engineValidationInFlight = false;
 
-	async function runEngineValidation(label: string) {
+	// Engine notification state
+	let engineNotification = $state<{ message: string; type: 'success' | 'error'; visible: boolean }>({ message: '', type: 'success', visible: false });
+	let engineNotificationTimer: ReturnType<typeof setTimeout> | undefined;
+
+	function showEngineNotification(message: string, type: 'success' | 'error') {
+		clearTimeout(engineNotificationTimer);
+		engineNotification = { message, type, visible: true };
+		engineNotificationTimer = setTimeout(() => {
+			engineNotification = { ...engineNotification, visible: false };
+		}, type === 'success' ? 5000 : 8000);
+	}
+
+	async function triggerEngineValidation(label: string) {
 		if (engineValidationInFlight) return;
 		engineValidationInFlight = true;
 		console.warn(`[${label}] Engine validation fired`);
 		try {
-			const results = await cdiscEngineService.validate();
-			if (results.size > 0) {
-				validationService.addEngineResults(results);
+			const summary = await runFullValidation();
+			if (summary.datasetCount > 0) {
+				showEngineNotification(
+					`Engine found ${summary.issueCount} ${summary.issueCount === 1 ? 'issue' : 'issues'} across ${summary.datasetCount} ${summary.datasetCount === 1 ? 'dataset' : 'datasets'}`,
+					'success'
+				);
+			} else {
+				showEngineNotification('Engine validation completed — no results returned', 'success');
 			}
 		} catch (e) {
-			console.warn(`[${label}] Engine validation failed (non-fatal):`, e);
+			const msg = e instanceof Error ? e.message : String(e);
+			console.warn(`[${label}] Engine validation failed (non-fatal):`, msg);
+			showEngineNotification(`Engine validation failed: ${msg}`, 'error');
 		} finally {
-			clearStashedFiles();
 			engineValidationInFlight = false;
 		}
 	}
@@ -99,7 +117,7 @@
 					// Server-side engine validation (debounced — wait for batch to finish)
 					console.warn('[layout] onDatasetReady: scheduling engine validation in 2s');
 					clearTimeout(engineValidationTimer);
-					engineValidationTimer = setTimeout(() => runEngineValidation('layout'), 2000);
+					engineValidationTimer = setTimeout(() => triggerEngineValidation('layout'), 2000);
 				}
 			});
 
@@ -291,6 +309,21 @@
 			<div class="h-3 w-3 animate-spin rounded-full border-2 border-amber-600 border-t-transparent dark:border-amber-400 dark:border-t-transparent"></div>
 			CDISC Engine validating...
 		</div>
+	</div>
+{/if}
+{#if engineNotification.visible}
+	<div class="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-right-2 duration-200">
+		{#if engineNotification.type === 'success'}
+			<div class="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-800 shadow-md dark:border-green-500/20 dark:bg-green-950 dark:text-green-200">
+				<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
+				{engineNotification.message}
+			</div>
+		{:else}
+			<div class="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-800 shadow-md dark:border-red-500/20 dark:bg-red-950 dark:text-red-200">
+				<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+				{engineNotification.message}
+			</div>
+		{/if}
 	</div>
 {/if}
 <ThemeProvider>

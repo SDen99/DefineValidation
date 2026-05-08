@@ -26,6 +26,7 @@
 		validationIssueCount = 0,
 		hasValidationRun = false,
 		validationSummary = {},
+		hasEngineResults = false,
 		onDelete,
 		onClick
 	} = $props<{
@@ -44,6 +45,7 @@
 		validationIssueCount?: number;
 		hasValidationRun?: boolean;
 		validationSummary?: Record<string, number>;
+		hasEngineResults?: boolean;
 		onDelete: () => void;
 		onClick: () => void;
 	}>();
@@ -214,6 +216,15 @@
 							</Tooltip.Content>
 						</Tooltip.Root>
 					</Tooltip.Provider>
+				{/if}
+
+				{#if hasEngineResults}
+					<span
+						class="inline-block rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+						title="CDISC Engine results available"
+					>
+						Engine
+					</span>
 				{/if}
 
 				{#if metadata?.Class}

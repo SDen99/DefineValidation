@@ -82,6 +82,8 @@
 				}
 			}
 
+			const hasEngineResults = validationService.hasEngineResults(originalName);
+
 			return {
 				id: d.id, // For the #each key
 				originalName,
@@ -92,6 +94,7 @@
 				validationIssueCount,
 				hasValidationRun,
 				validationSummary,
+				hasEngineResults,
 				oid: datasetInfo?.oid || null,
 				defineType: datasetInfo?.defineType || null
 			};
@@ -165,8 +168,9 @@
 								metadata={props.metadata}
 								isSelected={props.isSelected}
 								validationIssueCount={props.validationIssueCount}
-							hasValidationRun={props.hasValidationRun}
-							validationSummary={props.validationSummary}
+								hasValidationRun={props.hasValidationRun}
+								validationSummary={props.validationSummary}
+								hasEngineResults={props.hasEngineResults}
 								onDelete={() => handleDeleteClick(props.originalName)}
 								onClick={() => handleDatasetClick(props.originalName)}
 							/>

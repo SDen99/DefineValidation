@@ -10,6 +10,7 @@ import { exportRulesToYaml } from '$lib/utils/ruleExporter';
 import { ruleState } from '$lib/core/state/ruleState.svelte';
 import { adaptEngineResults, buildEngineRules, type EngineApiResponse, type EngineRuleReport } from './engineResultAdapter';
 import type { Rule, ValidationResult } from '@sden99/validation-engine';
+import { validationService } from './validationService.svelte';
 
 // =============================================================================
 // Module State
@@ -191,6 +192,35 @@ export async function runEngineValidation(
 }
 
 // =============================================================================
+// Full Validation (fetch + merge + cleanup)
+// =============================================================================
+
+export interface EngineRunSummary {
+	issueCount: number;
+	datasetCount: number;
+}
+
+/**
+ * Run engine validation end-to-end: fetch results, merge into validation cache,
+ * and clear stashed files. Returns a summary for notification display.
+ * Throws on error so callers can show error notifications.
+ */
+export async function runFullValidation(): Promise<EngineRunSummary> {
+	const results = await runEngineValidation();
+
+	if (results.size > 0) {
+		validationService.addEngineResults(results);
+	}
+
+	clearStashedFiles();
+
+	const issueCount = Array.from(results.values())
+		.reduce((sum, arr) => sum + arr.length, 0);
+
+	return { issueCount, datasetCount: results.size };
+}
+
+// =============================================================================
 // Public API (reactive getters)
 // =============================================================================
 
@@ -226,5 +256,6 @@ export const cdiscEngineService = {
 	stashFile: stashFileForEngine,
 	clearStashed: clearStashedFiles,
 	getStashedCount: getStashedFileCount,
-	validate: runEngineValidation
+	validate: runEngineValidation,
+	runFullValidation
 };

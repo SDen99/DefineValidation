@@ -267,6 +267,20 @@ export const validationService = {
 		return violations;
 	},
 
+	hasEngineResults(datasetId: string): boolean {
+		const entry = resultsByDataset.get(datasetId);
+		if (entry) {
+			return entry.results.some(r => r.ruleId.startsWith('ENGINE.'));
+		}
+		const normalized = normalizeDatasetId(datasetId);
+		for (const [key, value] of resultsByDataset) {
+			if (normalizeDatasetId(key) === normalized) {
+				return value.results.some(r => r.ruleId.startsWith('ENGINE.'));
+			}
+		}
+		return false;
+	},
+
 	invalidateCache(datasetId?: string): void {
 		if (datasetId) {
 			const newCache = new Map(resultsByDataset);

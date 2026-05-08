@@ -5,6 +5,7 @@
 	import Eye from '@lucide/svelte/icons/eye';
 	import Search from '@lucide/svelte/icons/search';
 	import X from '@lucide/svelte/icons/x';
+	import Loader2 from '@lucide/svelte/icons/loader-2';
 	import {
 		Button,
 		Badge,
@@ -26,13 +27,15 @@
 		DropdownMenuContent,
 		DropdownMenuCheckboxItem
 	} from '$lib/components/core/dropdown-menu';
+	import * as Tooltip from '$lib/components/core/tooltip';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import ViewSwitcher from '$lib/components/layout/ViewSwitcher.svelte';
 	import StorageBadge from '$lib/components/layout/StorageBadge.svelte';
 	import FileUpload from '$lib/components/data/shared/FileUpload.svelte';
 	import { ruleState } from '$lib/core/state/ruleState.svelte';
 	import { validationService } from '$lib/services/validationService.svelte';
-	import { cdiscEngineService } from '$lib/services/cdiscEngineService.svelte';
+	import { cdiscEngineService, runFullValidation, getStashedFileCount } from '$lib/services/cdiscEngineService.svelte';
+	import Play from '@lucide/svelte/icons/play';
 	import {
 		exportRulesToYaml,
 		exportRulesToJson,
@@ -274,6 +277,18 @@
 		appState.appView.value = 'datasets';
 	}
 
+	let stashedCount = $derived(getStashedFileCount());
+	let engineRunning = $derived(cdiscEngineService.isRunning);
+
+	async function handleRunEngine() {
+		try {
+			await runFullValidation();
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			errorState.logWarning(`Engine validation failed: ${msg}`);
+		}
+	}
+
 	function getScopeDisplay(rule: Rule): string {
 		const scope = rule.Scope;
 		if (!scope?.Domains?.Include) return 'All domains';
@@ -343,6 +358,31 @@
 				</div>
 
 				<div class="flex items-center gap-2">
+					<Tooltip.Provider>
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								<Button
+									variant="outline"
+									class="gap-2"
+									onclick={handleRunEngine}
+									disabled={engineRunning || stashedCount === 0}
+								>
+									{#if engineRunning}
+										<Loader2 class="h-4 w-4 animate-spin" />
+									{:else}
+										<Play class="h-4 w-4" />
+									{/if}
+									Run Engine{#if stashedCount > 0} ({stashedCount} {stashedCount === 1 ? 'file' : 'files'}){/if}
+								</Button>
+							</Tooltip.Trigger>
+							{#if stashedCount === 0 && !engineRunning}
+								<Tooltip.Content>
+									<p>Upload .xpt or .sas7bdat files first</p>
+								</Tooltip.Content>
+							{/if}
+						</Tooltip.Root>
+					</Tooltip.Provider>
+
 					{#if allRules.length > 0}
 						<div class="relative">
 							<Button variant="outline" class="gap-2" onclick={() => (showExportMenu = !showExportMenu)}>
