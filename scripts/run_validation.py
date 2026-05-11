@@ -28,7 +28,6 @@ import subprocess
 import sys
 import tempfile
 
-
 def find_engine_dir():
     """Locate the cdisc-rules-engine repo (sibling of this project)."""
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
@@ -118,6 +117,10 @@ def main():
     if not os.path.isfile(core_py):
         error_json(f"core.py not found at {core_py}")
 
+    # Shim patches pyreadstat.read_xport to handle non-UTF-8 XPT files
+    scripts_dir = os.path.dirname(os.path.abspath(__file__))
+    engine_shim = os.path.join(scripts_dir, "engine_shim.py")
+
     # --- Validate cache ---
     if args.cache:
         cache_dir = args.cache
@@ -154,6 +157,7 @@ def main():
 
         cmd = [
             python_exe,
+            engine_shim,
             core_py,
             "validate",
             "-s", args.standard,
