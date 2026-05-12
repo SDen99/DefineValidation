@@ -3,6 +3,7 @@ set -e
 cd /mnt/code
 export PORT=${PORT:-8888}
 export HOST=${HOST:-0.0.0.0}
+export CDISC_POOL_SIZE=${CDISC_POOL_SIZE:-10}
 
 # Set up Python venv for CDISC engine (if scripts/ exists and venv doesn't)
 if [[ -d scripts && ! -d scripts/.venv ]]; then

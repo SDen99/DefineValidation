@@ -50,9 +50,22 @@ cp "$REPO_ROOT/app.sh" "$TMPDIR/app.sh"
 if [[ -d "$REPO_ROOT/scripts" ]]; then
   mkdir -p "$TMPDIR/scripts"
   cp "$REPO_ROOT/scripts/run_validation.py" "$TMPDIR/scripts/"
+  cp "$REPO_ROOT/scripts/engine_shim.py" "$TMPDIR/scripts/"
   cp "$REPO_ROOT/scripts/requirements.txt" "$TMPDIR/scripts/" 2>/dev/null || true
   cp "$REPO_ROOT/scripts/setup.sh" "$TMPDIR/scripts/" 2>/dev/null || true
   echo "==> Copied scripts/ directory"
+fi
+
+# Copy engine cache (.pkl files) for Domino deployment
+# On Domino this ends up at /mnt/code/cdisc/cdisc-rules-engine/resources/cache/
+ENGINE_CACHE="$REPO_ROOT/../cdisc-rules-engine/resources/cache"
+if [[ -d "$ENGINE_CACHE" ]]; then
+  mkdir -p "$TMPDIR/cdisc/cdisc-rules-engine/resources/cache"
+  cp "$ENGINE_CACHE"/*.pkl "$TMPDIR/cdisc/cdisc-rules-engine/resources/cache/"
+  PKL_COUNT=$(ls "$TMPDIR/cdisc/cdisc-rules-engine/resources/cache/"*.pkl | wc -l | tr -d ' ')
+  echo "==> Copied engine cache ($PKL_COUNT .pkl files)"
+else
+  echo "WARNING: Engine cache not found at $ENGINE_CACHE — skipping"
 fi
 
 # Minimal package.json for deploy branch
@@ -82,6 +95,8 @@ cat > "$TMPDIR/.gitignore" <<'GITIGNORE'
 !.gitignore
 !scripts/
 !scripts/**
+!cdisc/
+!cdisc/**
 GITIGNORE
 
 # --- Switch to deploy branch ---
@@ -107,11 +122,17 @@ cp "$TMPDIR/.gitignore" .
 if [[ -d "$TMPDIR/scripts" ]]; then
   cp -r "$TMPDIR/scripts" .
 fi
+if [[ -d "$TMPDIR/cdisc" ]]; then
+  cp -r "$TMPDIR/cdisc" .
+fi
 
 # --- Commit only deploy artifacts ---
 git add build/ app.sh package.json .nvmrc .gitignore
 if [[ -d scripts ]]; then
   git add scripts/
+fi
+if [[ -d cdisc ]]; then
+  git add cdisc/
 fi
 git commit -m "Deploy $COMMIT_SHA — $TIMESTAMP"
 

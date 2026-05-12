@@ -3,18 +3,36 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV_DIR="$SCRIPT_DIR/.venv"
-ENGINE_DIR="$(cd "$SCRIPT_DIR/../../cdisc-rules-engine" && pwd)"
+
+# Search order:
+#   1. /mnt/code/cdisc/cdisc-rules-engine  (Domino deployment)
+#   2. ../../cdisc-rules-engine              (local dev — sibling directory)
+DOMINO_ENGINE="/mnt/code/cdisc/cdisc-rules-engine"
+LOCAL_ENGINE="$SCRIPT_DIR/../../cdisc-rules-engine"
+
+if [ -d "$DOMINO_ENGINE" ]; then
+    ENGINE_DIR="$DOMINO_ENGINE"
+elif [ -d "$LOCAL_ENGINE" ]; then
+    ENGINE_DIR="$(cd "$LOCAL_ENGINE" && pwd)"
+else
+    ENGINE_DIR=""
+fi
+
 CACHE_DIR="$ENGINE_DIR/resources/cache"
 
 echo "=== CDISC Rules Engine - Setup ==="
 echo ""
 
 # Check engine repo exists
-if [ ! -d "$ENGINE_DIR" ]; then
-    echo "ERROR: cdisc-rules-engine repo not found at $ENGINE_DIR"
-    echo "Expected sibling directory: ../cdisc-rules-engine"
+if [ -z "$ENGINE_DIR" ] || [ ! -d "$ENGINE_DIR" ]; then
+    echo "ERROR: cdisc-rules-engine not found."
+    echo "Searched:"
+    echo "  $DOMINO_ENGINE (Domino)"
+    echo "  $(cd "$SCRIPT_DIR/../.." && pwd)/cdisc-rules-engine (local dev)"
     exit 1
 fi
+
+echo "Engine found at: $ENGINE_DIR"
 
 # Create venv
 if [ ! -d "$VENV_DIR" ]; then
